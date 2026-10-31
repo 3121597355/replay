@@ -1,0 +1,45 @@
+{
+  "name": "replay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Replay — 看剧学英语。浏览器内播放本地视频，逐句精听、点词查义、导出 Anki。视频不上传。",
+  "scripts": {
+    "dev": "next dev -p 4310",
+    "build": "next build",
+    "start": "next start -p 4310",
+    "typecheck": "tsc --noEmit",
+    "shots": "node scripts/shot.mjs",
+    "dict": "node scripts/build-dict.mjs"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
+    "next": "^14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.47",
+    "tailwindcss": "3.4.13",
+    "tsx": "^4.23.15",
+    "typescript": "5.6.3"
+  },
+  "license": "MIT",
+  "keywords": [
+    "english-learning",
+    "subtitles",
+    "video",
+    "ffmpeg-wasm",
+    "nextjs",
+    "anki",
+    "local-first"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "author": "winter solstice <3121597355@users.noreply.github.com>"
+}

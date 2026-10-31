@@ -1,0 +1,397 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- 主题令牌：浅色为默认，data-theme='dark' 覆盖 ---------- */
+:root {
+  color-scheme: light;
+
+  /* 供 rgb(var(--x) / α) 叠加使用的基础色 */
+  --bg-rgb: 255 255 255;
+  --fg-rgb: 31 35 40;
+
+  --page: #ffffff;
+  --surface: #f6f8fa;
+  --surface-2: #eef1f4;
+  --surface-3: #e6eaee;
+
+  --text: #1f2328;
+  --text-soft: #424a53;
+  --text-dim: #57606a;
+  --text-faint: #6e7781;
+
+  --line: #d1d9e0;
+  --line-2: #eaeef2;
+  --line-strong: #afb8c1;
+
+  --link: #0969da;
+  --accent: #1f883d;
+  --accent-hover: #1a7f37;
+  --gold: #e0a94a;
+  --gold-ink: #8a5d12;
+
+  /* 学习台 */
+  --learn-bg: #f3f5f7;
+  --learn-panel: #ffffff;
+  --stage: #e9edf0;
+  --learn-bar: rgb(255 255 255 / 0.88);
+  --learn-toast: rgb(255 255 255 / 0.96);
+
+  --shadow-card: 0 10px 24px -16px rgb(31 35 40 / 0.45);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-rgb: 13 17 23;
+  --fg-rgb: 230 237 243;
+
+  --page: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2128;
+  --surface-3: #21262d;
+
+  --text: #e6edf3;
+  --text-soft: #c9d1d9;
+  --text-dim: #adbac7;
+  --text-faint: #949ba3;
+
+  --line: #30363d;
+  --line-2: #21262d;
+  --line-strong: #484f58;
+
+  --link: #58a6ff;
+  --accent: #238636;
+  --accent-hover: #2ea043;
+  --gold-ink: #e6b45e;
+
+  --learn-bg: #090b0a;
+  --learn-panel: #0e1211;
+  --stage: #0c100e;
+  --learn-bar: rgb(7 10 9 / 0.84);
+  --learn-toast: rgb(20 22 28 / 0.95);
+
+  --shadow-card: 0 14px 32px -20px rgb(0 0 0 / 0.85);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--page);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(var(--fg-rgb) / 0.16);
+  color: var(--text);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border: 3px solid var(--page);
+  border-radius: 999px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line-strong);
+  border: 3px solid var(--page);
+  background-clip: content-box;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border px-4 py-[9px] text-[14px] font-semibold leading-5;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .btn:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+  .btn:not(:disabled):active {
+    transform: translateY(0);
+  }
+
+  .btn-primary {
+    border-color: rgb(var(--fg-rgb) / 0.12);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 0 rgb(31 35 40 / 0.1);
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 6px 16px -10px rgb(31 136 61 / 0.65), 0 1px 0 rgb(31 35 40 / 0.1);
+  }
+
+  .btn-secondary,
+  .btn-ghost {
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 0 rgb(31 35 40 / 0.04);
+  }
+  .btn-secondary:hover,
+  .btn-ghost:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-2);
+  }
+
+  .btn-gold {
+    border-color: rgb(240 199 120 / 0.3);
+    background: var(--gold);
+    color: #1a1206;
+    box-shadow: 0 8px 24px -14px rgb(224 169 74 / 0.8);
+  }
+  .btn-gold:hover {
+    background: #edba60;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium;
+    border-color: var(--line);
+    background: var(--surface);
+    color: var(--text-dim);
+  }
+
+  .title-serif {
+    font-family: inherit;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-serif {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    letter-spacing: -0.03em;
+  }
+
+  .section-kicker {
+    @apply text-[12px] font-semibold;
+    color: var(--text-dim);
+  }
+
+  .hairline {
+    height: 1px;
+    background: var(--line);
+  }
+
+  .poster-frame {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .select-control {
+    @apply h-9 w-full rounded-md border px-3 text-[14px] outline-none;
+    border-color: var(--line);
+    background: var(--page);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .select-control:hover {
+    border-color: var(--line-strong);
+  }
+  .select-control:focus {
+    border-color: var(--link);
+    box-shadow: 0 0 0 3px rgb(9 105 218 / 0.18);
+  }
+  .select-control option {
+    background: var(--page);
+    color: var(--text);
+  }
+
+  .field-control {
+    @apply h-9 w-full rounded-md border px-3 text-[14px] outline-none;
+    border-color: var(--line);
+    background: var(--page);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .field-control::placeholder {
+    color: var(--text-faint);
+  }
+  .field-control:focus {
+    border-color: var(--link);
+    box-shadow: 0 0 0 3px rgb(9 105 218 / 0.18);
+  }
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 学习台：跟随主题，不再固定暗色 */
+[data-page='learn'] .btn-gold {
+  border-color: rgb(240 199 120 / 0.3);
+  background: var(--gold);
+  color: #1a1206;
+}
+[data-page='learn'] .btn-gold:hover {
+  background: #edba60;
+}
+
+body:has([data-page='learn']) {
+  background: var(--learn-bg);
+}
+
+body:has([data-page='learn']) .btn-ghost {
+  border-color: rgb(var(--fg-rgb) / 0.12);
+  background: rgb(var(--fg-rgb) / 0.03);
+  color: var(--text-dim);
+  box-shadow: none;
+}
+body:has([data-page='learn']) .btn-ghost:hover {
+  border-color: rgb(224 169 74 / 0.35);
+  background: rgb(224 169 74 / 0.08);
+  color: var(--text);
+}
+body:has([data-page='learn']) .chip {
+  border-color: rgb(var(--fg-rgb) / 0.12);
+  background: rgb(var(--fg-rgb) / 0.04);
+  color: var(--text-dim);
+}
+body:has([data-page='learn']) :focus-visible {
+  outline-color: rgb(224 169 74 / 0.45);
+}
+body:has([data-page='learn']) ::selection {
+  background: rgb(224 169 74 / 0.3);
+  color: var(--text);
+}
+body:has([data-page='learn']) ::-webkit-scrollbar-thumb {
+  background: rgb(var(--fg-rgb) / 0.16);
+  border: 3px solid var(--learn-bg);
+  background-clip: content-box;
+}
+
+.cue-active {
+  background: linear-gradient(90deg, rgb(224 169 74 / 0.14), rgb(224 169 74 / 0.035));
+  border-left-color: var(--gold) !important;
+  animation: cueBreathe 2.8s ease-in-out infinite;
+}
+.cue-in {
+  animation: cueIn 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.cue-in-sub {
+  animation: cueIn 240ms cubic-bezier(0.22, 0.61, 0.36, 1) 40ms both;
+}
+.cue-hover:hover {
+  background: rgb(var(--fg-rgb) / 0.04);
+}
+
+mark.w {
+  background: linear-gradient(180deg, transparent 55%, rgb(224 169 74 / 0.28) 55%);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+video::-webkit-media-controls-panel {
+  background: linear-gradient(0deg, rgb(0 0 0 / 0.85), transparent);
+}
+
+.modal-overlay {
+  animation: overlayIn 180ms ease-out both;
+}
+.modal-panel {
+  animation: modalIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.drawer-panel {
+  animation: drawerIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cueBreathe {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgb(224 169 74 / 0); }
+  50% { box-shadow: inset 0 0 32px -14px rgb(224 169 74 / 0.55); }
+}
+@keyframes cueIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes drawerIn {
+  from { transform: translateX(24px); opacity: 0.7; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (min-width: 1024px) {
+  body:has([data-page='learn']) {
+    overflow: hidden;
+  }
+}
+body:has([data-page='learn']) footer {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
