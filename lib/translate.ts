@@ -27,8 +27,13 @@ export function loadConfig(): TranslateConfig {
 }
 
 export function saveConfig(cfg: TranslateConfig) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

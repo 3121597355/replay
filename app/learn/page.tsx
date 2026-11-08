@@ -43,6 +43,8 @@ import { createPortal } from 'react-dom';
 import WordCard, { type LookupState } from '@/components/WordCard';
 import { lookup, loadDict, tokenize } from '@/lib/dict';
 import sample from '@/public/sample/manchester-repair-v2.json';
+import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
+import { fetchTextWithTimeout, watchMediaQuery } from '@/lib/browser';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -59,6 +61,10 @@ function LearnInner() {
   const [videoFile, setVideoFile] = useState<File>();
   const [videoName, setVideoName] = useState<string>();
   const [loadingSample, setLoadingSample] = useState(false);
+  const sampleRequestRef = useRef<AbortController | null>(null);
+  const [sampleError, setSampleError] = useState<string>();
+  const [videoStatus, setVideoStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [videoError, setVideoError] = useState<string>();
   const [cues, setCues] = useState<Cue[]>([]);
   const [sourceName, setSourceName] = useState<string>();
   const [current, setCurrent] = useState(-1);
@@ -93,9 +99,9 @@ function LearnInner() {
       document.body.style.overflow = mq.matches ? 'hidden' : '';
     };
     apply();
-    mq.addEventListener('change', apply);
+    const unwatch = watchMediaQuery(mq, apply);
     return () => {
-      mq.removeEventListener('change', apply);
+      unwatch();
       document.body.style.overflow = '';
     };
   }, []);
@@ -219,16 +225,30 @@ function LearnInner() {
   // ---------- 初始化 ----------
   useEffect(() => {
     setCfg(loadConfig());
-    try {
-      const raw = localStorage.getItem('replay.saved');
-      if (raw) setSaved(JSON.parse(raw));
-    } catch {}
+    setSaved(loadSavedWords());
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('replay.saved', JSON.stringify(saved));
-  }, [saved]);
+    if (!mounted) return;
+    persistSavedWords(saved);
+  }, [saved, mounted]);
+
+  useEffect(() => () => sampleRequestRef.current?.abort(), []);
+
+  useEffect(() => () => {
+    if (videoUrl?.startsWith('blob:')) URL.revokeObjectURL(videoUrl);
+  }, [videoUrl]);
+
+  useEffect(() => {
+    if (!videoUrl || videoStatus !== 'loading') return;
+    const timer = setTimeout(() => {
+      if ((videoRef.current?.readyState ?? 0) < 3) {
+        setVideoError('视频加载较慢，请检查网络后重试。字幕已就绪，可以先阅读。');
+        setVideoStatus('error');
+      }
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [videoUrl, videoStatus]);
 
   // 打开设置时才统计缓存占用，没必要每次渲染都扫 localStorage
   useEffect(() => {
@@ -267,21 +287,20 @@ function LearnInner() {
   }
 
   // ---------- 视频 ----------
-  async function onVideoFile(file?: File) {
-    if (!file) return;
-    if (videoUrl) {
-      URL.revokeObjectURL(videoUrl);
-      // 换视频后旧字幕不能继续附在新画面上，配套字幕随后单独加载。
-      setCues([]);
-      setSourceName(undefined);
-      subHashRef.current = null;
-      setSubHash(null);
-      setResume(null);
-    }
-    const url = URL.createObjectURL(file);
+  function setVideoSource(url: string, name: string, file?: File) {
+    videoRef.current?.pause();
+    setCues([]);
+    setSourceName(undefined);
+    subHashRef.current = null;
+    setSubHash(null);
+    setResume(null);
     setVideoUrl(url);
     setVideoFile(file);
-    setVideoName(file.name);
+    setVideoName(name);
+    setVideoStatus('loading');
+    setVideoError(undefined);
+    setSampleError(undefined);
+    if (videoUrl === url) videoRef.current?.load();
     setCurrent(-1);
     setSelected(-1);
     currentRef.current = -1;
@@ -290,6 +309,14 @@ function LearnInner() {
     setPlaying(false);
     setNoTrack(false);
     setTracks(null);
+  }
+
+  async function onVideoFile(file?: File) {
+    if (!file) return;
+    sampleRequestRef.current?.abort();
+    setLoadingSample(false);
+    const url = URL.createObjectURL(file);
+    setVideoSource(url, file.name, file);
     flash(`已加载：${file.name}`);
 
     // 立刻探一下能不能读到内容，别等点抽字幕才发现
@@ -351,6 +378,11 @@ function LearnInner() {
   async function handleExtract(fileArg?: File) {
     const file = fileArg ?? videoFile;
     if (!file) {
+      // Streamed demos use their paired SRT instead of downloading the whole MP4.
+      if (videoUrl === sample.video) {
+        await loadSample();
+        return;
+      }
       flash('先选一个视频，才能抽里面的字幕');
       return;
     }
@@ -457,40 +489,34 @@ function LearnInner() {
   }
 
   /**
-   * 示例使用明确配对的视频和 SRT，两个文件都就绪后再一起载入。
+   * 示例读取配套 SRT 后交给原生播放器流式播放，不预先下载整个 MP4。
    * 英文和时间轴来自同一源视频，不复用旧演示的字幕或缓存地址。
    */
-  async function loadSample(kind: 'with-subs' | 'no-subs') {
-    if (loadingSample) return;
+  async function loadSample() {
+    if (loadingSample && !sampleRequestRef.current?.signal.aborted) return;
+    const request = new AbortController();
+    sampleRequestRef.current = request;
     setLoadingSample(true);
+    setSampleError(undefined);
     try {
-      flash('正在下载示例素材…');
-      const withSubs = kind === 'with-subs';
-      const [res, subRes] = await Promise.all([
-        fetch(withSubs ? sample.video : '/sample/sample-no-subs.mp4', { cache: 'no-store' }),
-        withSubs ? fetch(sample.subtitle, { cache: 'no-store' }) : Promise.resolve(null),
-      ]);
-      if (!res.ok || (subRes && !subRes.ok)) throw new Error('示例视频或配套 SRT 下载失败');
-      const text = subRes ? await subRes.text() : null;
-      if (text !== null && parseSubtitle(text, sample.subtitle).length !== sample.cues.length) {
+      const text = await fetchTextWithTimeout(sample.subtitle, request.signal);
+      if (request.signal.aborted) return;
+      if (parseSubtitle(text, sample.subtitle).length !== sample.cues.length) {
         throw new Error('配套字幕不完整，请重新加载示例');
       }
-      const blob = await res.blob();
-      const name = withSubs ? `${sample.title}.mp4` : 'sample-no-subs.mp4';
-      const file = new File([blob], name, { type: 'video/mp4' });
-
-      await onVideoFile(file);
-      if (text !== null) {
-        if (!applySrt(text, `${sample.title}.srt`)) throw new Error('配套 SRT 解析失败');
-        setFollow(true);
-        flash(`已加载《海边的曼彻斯特》维修对话 · ${sample.duration} 秒 · 视频与 SRT 已配对`);
-      } else {
-        await handleExtract(file);
-      }
+      setVideoSource(sample.video, `${sample.title}.mp4`);
+      if (!applySrt(text, `${sample.title}.srt`)) throw new Error('配套 SRT 解析失败');
+      setFollow(true);
+      flash('字幕已就绪，点击播放开始试学');
     } catch (err) {
-      flash(humanize(err));
+      if (request.signal.aborted) return;
+      setSampleError(err instanceof Error && !/Failed to fetch|NetworkError/i.test(err.message)
+        ? err.message : '示例字幕加载失败，请检查网络后重试');
     } finally {
-      setLoadingSample(false);
+      if (sampleRequestRef.current === request) {
+        setLoadingSample(false);
+        sampleRequestRef.current = null;
+      }
     }
   }
 
@@ -923,7 +949,7 @@ function LearnInner() {
               active={cues.length > 0 && !sourceName?.includes('演示')}
             />
             <button
-              onClick={() => loadSample('with-subs')}
+              onClick={() => loadSample()}
               disabled={loadingSample}
               title="《海边的曼彻斯特》维修对话 · 约 39 秒 · 配套 SRT"
               className="btn btn-ghost !px-3 !py-1.5 !text-[12.5px] disabled:opacity-35"
@@ -932,9 +958,9 @@ function LearnInner() {
             </button>
             <button
               onClick={() => handleExtract()}
-              disabled={!videoFile || !!extractState}
+              disabled={(!videoFile && videoUrl !== sample.video) || !!extractState || loadingSample}
               title={
-                videoFile
+                videoUrl === sample.video ? '重新载入配套字幕' : videoFile
                   ? '从视频里直接抽字幕轨，不需要单独的字幕文件'
                   : '先选一个视频'
               }
@@ -942,7 +968,7 @@ function LearnInner() {
                 videoFile && cues.length === 0 ? 'btn-gold' : 'btn-ghost'
               }`}
             >
-              {extractState ? '抽取中…' : '抽字幕'}
+              {extractState ? '抽取中…' : videoUrl === sample.video ? '重载字幕' : '抽字幕'}
             </button>
 
             <span className="mx-1 h-4 w-px bg-[rgb(var(--fg-rgb)/0.10)]" />
@@ -1021,6 +1047,18 @@ function LearnInner() {
         </div>
       </div>
 
+      {(loadingSample || sampleError) && (
+        <div role={sampleError ? 'alert' : 'status'} className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
+          <span>{sampleError ?? '正在加载配套字幕，视频将边加载边播放…'}</span>
+          <button className="btn btn-ghost shrink-0 !text-[12px]" onClick={() => {
+            if (loadingSample) {
+              sampleRequestRef.current?.abort();
+              setLoadingSample(false);
+            } else void loadSample();
+          }}>{loadingSample ? '取消' : '重试'}</button>
+        </div>
+      )}
+
       {/* ============ 抽取进度 ============ */}
       {extractState && (
         <div className="border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] px-4 py-2 backdrop-blur">
@@ -1071,8 +1109,11 @@ function LearnInner() {
             {videoUrl ? (
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-black shadow-card">
                 <video
+                  key={videoUrl}
                   ref={videoRef}
                   src={videoUrl}
+                  playsInline
+                  preload="auto"
                   className="mx-auto block h-full max-h-full w-full object-contain"
                   onTimeUpdate={onTimeUpdate}
                   onSeeking={onSeeking}
@@ -1084,6 +1125,15 @@ function LearnInner() {
                   onEnded={onTimeUpdate}
                   onPlay={() => setPlaying(true)}
                   onPause={() => setPlaying(false)}
+                  onCanPlay={() => { setVideoStatus('ready'); setVideoError(undefined); }}
+                  onWaiting={() => setVideoStatus('loading')}
+                  onError={(event) => {
+                    const code = event.currentTarget.error?.code;
+                    setVideoError(code === 3 || code === 4
+                      ? '这个浏览器无法播放此视频，请换用 Safari、Chrome 或 Edge，或选择其他视频。'
+                      : '视频加载失败，请检查网络后重试。');
+                    setVideoStatus('error');
+                  }}
                   controls
                 />
 
@@ -1124,11 +1174,11 @@ function LearnInner() {
                     key={current}
                     className="pointer-events-none absolute inset-x-0 bottom-12 flex flex-col items-center gap-0.5 px-8 text-center"
                   >
-                    <p className="cue-in max-w-[92%] text-[15px] font-medium leading-snug text-[var(--text)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_18px_rgba(0,0,0,0.75)]">
+                    <p className="cue-in max-w-[92%] text-[15px] font-medium leading-snug text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_18px_rgba(0,0,0,0.75)]">
                       {cues[current].text}
                     </p>
                     {showTrans && (cues[current].native || cues[current].translation) && (
-                      <p className="cue-in-sub max-w-[92%] text-[12.5px] leading-snug text-[var(--gold-ink)] [text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_14px_rgba(0,0,0,0.75)]">
+                      <p className="cue-in-sub max-w-[92%] text-[12.5px] leading-snug text-[#f5cb7f] [text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_14px_rgba(0,0,0,0.75)]">
                         {cues[current].translation ?? cues[current].native}
                       </p>
                     )}
@@ -1138,7 +1188,8 @@ function LearnInner() {
             ) : (
               <EmptyVideo
                 onVideo={onVideoFile}
-                onSample={() => loadSample('with-subs')}
+                onSample={() => loadSample()}
+                loadingSample={loadingSample}
                 onFolder={pickFolder}
                 scanning={scanning}
                 canFolder={canUseFolder}
@@ -1147,6 +1198,17 @@ function LearnInner() {
               />
             )}
           </div>
+
+          {videoUrl && videoStatus !== 'ready' && (
+            <div role={videoStatus === 'error' ? 'alert' : 'status'} className="flex items-center justify-between gap-2 px-4 py-2 text-[12px] text-[var(--text-dim)]">
+              <span>{videoError ?? '视频正在缓冲，加载后点击播放。'}</span>
+              {videoStatus === 'error' && <button className="btn btn-ghost shrink-0 !text-[12px]" onClick={() => {
+                setVideoError(undefined);
+                setVideoStatus('loading');
+                videoRef.current?.load();
+              }}>重试视频</button>}
+            </div>
+          )}
 
           {/* 控制条 */}
           <div className="border-t border-[rgb(var(--fg-rgb)/0.06)] px-3 py-2.5">
@@ -1791,9 +1853,9 @@ function LearnInner() {
               </button>
               <button
                 onClick={() => {
-                  saveConfig(cfg);
+                  const persisted = saveConfig(cfg);
                   setShowSettings(false);
-                  flash('设置已保存');
+                  flash(persisted ? '设置已保存' : '设置本次有效；浏览器不允许保存，关闭页面后需要重新填写');
                 }}
                 className="btn btn-gold"
               >
@@ -2048,6 +2110,7 @@ function Route({ n, title, desc }: { n: string; title: string; desc: string }) {
 function EmptyVideo({
   onVideo,
   onSample,
+  loadingSample,
   onFolder,
   scanning,
   canFolder,
@@ -2056,6 +2119,7 @@ function EmptyVideo({
 }: {
   onVideo: (f?: File) => void;
   onSample: () => void;
+  loadingSample: boolean;
   onFolder: () => void;
   scanning: number | null;
   canFolder: boolean;
@@ -2138,6 +2202,7 @@ function EmptyVideo({
 
       <button
         onClick={onSample}
+        disabled={loadingSample}
         className="text-[11px] text-[var(--text-faint)] underline decoration-white/15 underline-offset-4 transition-colors hover:text-[var(--gold-ink)]"
       >
         没有片源？试学《海边的曼彻斯特》维修片段
