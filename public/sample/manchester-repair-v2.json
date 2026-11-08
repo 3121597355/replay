@@ -1,0 +1,125 @@
+{
+  "title": "海边的曼彻斯特 · 维修对话",
+  "sourceVideo": "海边的曼彻斯特4k.mkv",
+  "subtitleSource": "同一 MKV 的英文 SRT；与海边的曼彻斯特.srt 对照一致",
+  "sourceStart": 214.548,
+  "sourceEnd": 253.453,
+  "duration": 38.905,
+  "video": "/sample/manchester-repair-v2.mp4",
+  "subtitle": "/sample/manchester-repair-v2.srt",
+  "subtitleSha256": "a09b361df6d0c309df4cbcecf340a6fce6fd9522e717a6c0cd32f425b15cad80",
+  "cues": [
+    {
+      "sourceStart": 214.548,
+      "sourceEnd": 216.116,
+      "start": 0,
+      "end": 1.568,
+      "text": "You need a new stopper."
+    },
+    {
+      "sourceStart": 216.717,
+      "sourceEnd": 218.752,
+      "start": 2.169,
+      "end": 4.204,
+      "text": "Is that it?"
+    },
+    {
+      "sourceStart": 218.786,
+      "sourceEnd": 221.689,
+      "start": 4.238,
+      "end": 7.141,
+      "text": "Your stopper's-- it's rotted all around the edges,"
+    },
+    {
+      "sourceStart": 221.722,
+      "sourceEnd": 223.391,
+      "start": 7.174,
+      "end": 8.843,
+      "text": "so it's not making a seal."
+    },
+    {
+      "sourceStart": 223.424,
+      "sourceEnd": 225.559,
+      "start": 8.876,
+      "end": 11.011,
+      "text": "The water's going to drip through to the bowl."
+    },
+    {
+      "sourceStart": 225.593,
+      "sourceEnd": 227.227,
+      "start": 11.045,
+      "end": 12.679,
+      "text": "[talk radio playing faintly]"
+    },
+    {
+      "sourceStart": 227.261,
+      "sourceEnd": 228.529,
+      "start": 12.713,
+      "end": 13.981,
+      "text": "[water dripping]"
+    },
+    {
+      "sourceStart": 228.562,
+      "sourceEnd": 230.431,
+      "start": 14.014,
+      "end": 15.883,
+      "text": "I could, uh--"
+    },
+    {
+      "sourceStart": 230.464,
+      "sourceEnd": 233.467,
+      "start": 15.916,
+      "end": 18.919,
+      "text": "I could bring you a new one tomorrow."
+    },
+    {
+      "sourceStart": 233.501,
+      "sourceEnd": 236.27,
+      "start": 18.953,
+      "end": 21.722,
+      "text": "Or you might want to consider replacing the whole apparatus."
+    },
+    {
+      "sourceStart": 236.304,
+      "sourceEnd": 238.406,
+      "start": 21.756,
+      "end": 23.858,
+      "text": "[inhales] What do you recommend?"
+    },
+    {
+      "sourceStart": 240.841,
+      "sourceEnd": 242.476,
+      "start": 26.293,
+      "end": 27.928,
+      "text": "I could replace the stopper first."
+    },
+    {
+      "sourceStart": 242.51,
+      "sourceEnd": 244.845,
+      "start": 27.962,
+      "end": 30.297,
+      "text": "If that doesn't work, I could replace the whole apparatus."
+    },
+    {
+      "sourceStart": 246.414,
+      "sourceEnd": 249.082,
+      "start": 31.866,
+      "end": 34.534,
+      "text": "You can't give me a professional recommendation?"
+    },
+    {
+      "sourceStart": 250.25,
+      "sourceEnd": 251.619,
+      "start": 35.702,
+      "end": 37.071,
+      "text": "Well,"
+    },
+    {
+      "sourceStart": 251.652,
+      "sourceEnd": 252.953,
+      "start": 37.104,
+      "end": 38.405,
+      "text": "it's really up to you."
+    }
+  ]
+}

@@ -110,7 +110,8 @@ npm start
 
 不需要后端、数据库、账户。想用翻译功能，点右上角齿轮填一个 API Key 即可（默认指向 DeepSeek，可改成任意兼容接口）。
 
-> 演示按钮需要 `public/sample/demo.mp4`。仓库里带了一份仅用于功能演示的片段，
+> 「示例片段」加载 `public/sample/manchester-repair-v2.mp4` 和配套 `.srt`。
+> 片段取自《海边的曼彻斯特》的维修对话，约 39 秒；视频与字幕来自同一版本，按同一个起点截取。
 > 商用或公开运营前请替换为你拥有权利的素材，说明见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)。
 
 ---

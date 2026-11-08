@@ -42,6 +42,7 @@ import { Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import WordCard, { type LookupState } from '@/components/WordCard';
 import { lookup, loadDict, tokenize } from '@/lib/dict';
+import sample from '@/public/sample/manchester-repair-v2.json';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -57,9 +58,12 @@ function LearnInner() {
   const [videoUrl, setVideoUrl] = useState<string>();
   const [videoFile, setVideoFile] = useState<File>();
   const [videoName, setVideoName] = useState<string>();
+  const [loadingSample, setLoadingSample] = useState(false);
   const [cues, setCues] = useState<Cue[]>([]);
   const [sourceName, setSourceName] = useState<string>();
   const [current, setCurrent] = useState(-1);
+  // 当前正在显示的字幕与精听选中的句子分开，空白处隐藏字幕仍可重播。
+  const [selected, setSelected] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [rate, setRate] = useState(1);
@@ -204,9 +208,12 @@ function LearnInner() {
 
   const loopRef = useRef(loop);
   const currentRef = useRef(current);
+  const selectedRef = useRef(selected);
+  const loopCueRef = useRef(-1);
   const cuesRef = useRef(cues);
   loopRef.current = loop;
   currentRef.current = current;
+  selectedRef.current = selected;
   cuesRef.current = cues;
 
   // ---------- 初始化 ----------
@@ -262,11 +269,25 @@ function LearnInner() {
   // ---------- 视频 ----------
   async function onVideoFile(file?: File) {
     if (!file) return;
-    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+      // 换视频后旧字幕不能继续附在新画面上，配套字幕随后单独加载。
+      setCues([]);
+      setSourceName(undefined);
+      subHashRef.current = null;
+      setSubHash(null);
+      setResume(null);
+    }
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
     setVideoFile(file);
     setVideoName(file.name);
+    setCurrent(-1);
+    setSelected(-1);
+    currentRef.current = -1;
+    selectedRef.current = -1;
+    loopCueRef.current = -1;
+    setPlaying(false);
     setNoTrack(false);
     setTracks(null);
     flash(`已加载：${file.name}`);
@@ -302,6 +323,10 @@ function LearnInner() {
     setCues(parsed);
     setSourceName(label);
     setCurrent(-1);
+    setSelected(-1);
+    currentRef.current = -1;
+    selectedRef.current = -1;
+    loopCueRef.current = -1;
 
     const bilingual = parsed.filter((c) => c.native).length;
     const fmt = formatLabel[detectFormat(text, label)];
@@ -432,25 +457,40 @@ function LearnInner() {
   }
 
   /**
-   * 示例素材：给没有片源的人一条完整跑通的路。
-   * 走的是和真实文件一模一样的流程，不是特判。
+   * 示例使用明确配对的视频和 SRT，两个文件都就绪后再一起载入。
+   * 英文和时间轴来自同一源视频，不复用旧演示的字幕或缓存地址。
    */
   async function loadSample(kind: 'with-subs' | 'no-subs') {
+    if (loadingSample) return;
+    setLoadingSample(true);
     try {
       flash('正在下载示例素材…');
-      const url =
-        kind === 'with-subs' ? '/sample/demo.mp4' : '/sample/sample-no-subs.mp4';
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('素材下载失败');
+      const withSubs = kind === 'with-subs';
+      const [res, subRes] = await Promise.all([
+        fetch(withSubs ? sample.video : '/sample/sample-no-subs.mp4', { cache: 'no-store' }),
+        withSubs ? fetch(sample.subtitle, { cache: 'no-store' }) : Promise.resolve(null),
+      ]);
+      if (!res.ok || (subRes && !subRes.ok)) throw new Error('示例视频或配套 SRT 下载失败');
+      const text = subRes ? await subRes.text() : null;
+      if (text !== null && parseSubtitle(text, sample.subtitle).length !== sample.cues.length) {
+        throw new Error('配套字幕不完整，请重新加载示例');
+      }
       const blob = await res.blob();
-      const name = kind === 'with-subs' ? 'demo.mp4' : 'sample-no-subs.mp4';
+      const name = withSubs ? `${sample.title}.mp4` : 'sample-no-subs.mp4';
       const file = new File([blob], name, { type: 'video/mp4' });
 
-      onVideoFile(file);
-      await new Promise((r) => setTimeout(r, 80));
-      await handleExtract(file);
+      await onVideoFile(file);
+      if (text !== null) {
+        if (!applySrt(text, `${sample.title}.srt`)) throw new Error('配套 SRT 解析失败');
+        setFollow(true);
+        flash(`已加载《海边的曼彻斯特》维修对话 · ${sample.duration} 秒 · 视频与 SRT 已配对`);
+      } else {
+        await handleExtract(file);
+      }
     } catch (err) {
       flash(humanize(err));
+    } finally {
+      setLoadingSample(false);
     }
   }
 
@@ -529,7 +569,11 @@ function LearnInner() {
     if (!v || !c) return;
     const wasPlaying = !v.paused;
     v.currentTime = c.start + 0.005;
+    currentRef.current = idx;
+    selectedRef.current = idx;
+    loopCueRef.current = idx;
     setCurrent(idx);
+    setSelected(idx);
     // 主动跳到某句，就重新跟随播放
     setFollow(true);
     if (autoplay ?? wasPlaying) {
@@ -569,7 +613,7 @@ function LearnInner() {
 
   /**
    * 二分查找当前时间落在哪一句。
-   * 字幕上千条，每 250ms 全表扫一遍没必要。
+   * 字幕上千条，每帧全表扫一遍没必要。
    */
   const cueIndexAt = useCallback((list: Cue[], t: number): number => {
     if (list.length === 0) return -1;
@@ -596,18 +640,29 @@ function LearnInner() {
     const t = v.currentTime;
     const list = cuesRef.current;
 
-    // 单句循环：只在用户主动开启时生效
-    if (loopRef.current && currentRef.current >= 0) {
-      const c = list[currentRef.current];
+    // 循环目标独立于实时高亮，避免跨过句尾时被下一句抢走。
+    if (loopRef.current && !v.paused && !v.seeking) {
+      const c = list[loopCueRef.current];
       if (c && t >= c.end) {
         v.currentTime = c.start + 0.005;
+        currentRef.current = loopCueRef.current;
+        setCurrent(loopCueRef.current);
         return;
       }
     }
 
     const idx = cueIndexAt(list, t);
-    if (idx >= 0 && idx !== currentRef.current) {
+    if (idx >= 0 && loopRef.current && loopCueRef.current < 0) {
+      loopCueRef.current = idx;
+    }
+    // -1 也必须同步：两句之间、片头、片尾都不该残留上一句。
+    if (idx !== currentRef.current) {
+      currentRef.current = idx;
       setCurrent(idx);
+    }
+    if (idx >= 0 && idx !== selectedRef.current) {
+      selectedRef.current = idx;
+      setSelected(idx);
     }
 
     // 每 5 秒记一次播放位置，下次打开同一份字幕能接着看
@@ -616,29 +671,45 @@ function LearnInner() {
       lastSaveRef.current = now;
       saveProgress(subHashRef.current, {
         time: t,
-        cue: currentRef.current,
+        cue: idx,
         duration: Number.isFinite(v.duration) ? v.duration : undefined,
       });
     }
   }, [cueIndexAt]);
 
-  // 用 rAF 替代 timeupdate 驱动字幕高亮，消除最多 250ms 的更新延迟
+  // 播放、循环和高亮共用同一个时钟；暂停拖动则由媒体事件同步。
   useEffect(() => {
     if (!playing) return;
     let rafId: number;
     const tick = () => {
       const v = videoRef.current;
       if (v && !v.paused && !v.ended) {
-        const idx = cueIndexAt(cuesRef.current, v.currentTime);
-        if (idx >= 0 && idx !== currentRef.current) {
-          setCurrent(idx);
-        }
+        onTimeUpdate();
       }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [playing, cueIndexAt]);
+  }, [playing, onTimeUpdate]);
+
+  // 字幕加载完成时，按当前播放位置立即高亮，不等下一次播放。
+  useEffect(() => {
+    onTimeUpdate();
+  }, [cues, videoUrl, onTimeUpdate]);
+
+  const onSeeking = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    // 原生进度条跳转也更新循环目标，避免被拉回跳转前的句子。
+    loopCueRef.current = cueIndexAt(cuesRef.current, v.currentTime);
+    onTimeUpdate();
+  }, [cueIndexAt, onTimeUpdate]);
+
+  function toggleLoop() {
+    loopCueRef.current = selectedRef.current;
+    loopRef.current = !loopRef.current;
+    setLoop(loopRef.current);
+  }
 
   // 自动滚动到当前句（用户手动翻看时暂停）
   useEffect(() => {
@@ -660,15 +731,15 @@ function LearnInner() {
 
   function replay() {
     const v = videoRef.current;
-    const c = cues[current];
+    const c = cues[selectedRef.current];
     if (!v || !c) return;
-    v.currentTime = c.start + 0.01;
-    v.play().catch(() => {});
+    seekTo(selectedRef.current, true);
   }
 
   function go(delta: number) {
     if (cues.length === 0) return;
-    const next = Math.min(cues.length - 1, Math.max(0, (current < 0 ? 0 : current) + delta));
+    const idx = selectedRef.current;
+    const next = idx < 0 ? 0 : Math.min(cues.length - 1, Math.max(0, idx + delta));
     seekTo(next, true);
   }
 
@@ -689,7 +760,7 @@ function LearnInner() {
       } else if (e.key.toLowerCase() === 'r') {
         replay();
       } else if (e.key.toLowerCase() === 'l') {
-        setLoop((v) => !v);
+        toggleLoop();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -852,6 +923,14 @@ function LearnInner() {
               active={cues.length > 0 && !sourceName?.includes('演示')}
             />
             <button
+              onClick={() => loadSample('with-subs')}
+              disabled={loadingSample}
+              title="《海边的曼彻斯特》维修对话 · 约 39 秒 · 配套 SRT"
+              className="btn btn-ghost !px-3 !py-1.5 !text-[12.5px] disabled:opacity-35"
+            >
+              {loadingSample ? '加载示例…' : '示例片段'}
+            </button>
+            <button
               onClick={() => handleExtract()}
               disabled={!videoFile || !!extractState}
               title={
@@ -996,6 +1075,13 @@ function LearnInner() {
                   src={videoUrl}
                   className="mx-auto block h-full max-h-full w-full object-contain"
                   onTimeUpdate={onTimeUpdate}
+                  onSeeking={onSeeking}
+                  onSeeked={onTimeUpdate}
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) videoRef.current.playbackRate = rate;
+                    onTimeUpdate();
+                  }}
+                  onEnded={onTimeUpdate}
                   onPlay={() => setPlaying(true)}
                   onPause={() => setPlaying(false)}
                   controls
@@ -1089,7 +1175,7 @@ function LearnInner() {
                   <path d="M19 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                 </svg>
               </Ctrl>
-              <Ctrl onClick={replay} disabled={!videoUrl || current < 0} title="重播本句 (R)">
+              <Ctrl onClick={replay} disabled={!videoUrl || selected < 0} title="重播本句 (R)">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                   <path d="M4 12V7m0 5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -1097,7 +1183,7 @@ function LearnInner() {
               </Ctrl>
 
               <button
-                onClick={() => setLoop((v) => !v)}
+                onClick={toggleLoop}
                 className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] transition-all ${
                   loop
                     ? 'border-gold-500/35 bg-gold-500/10 text-[var(--gold-ink)]'
@@ -2054,7 +2140,7 @@ function EmptyVideo({
         onClick={onSample}
         className="text-[11px] text-[var(--text-faint)] underline decoration-white/15 underline-offset-4 transition-colors hover:text-[var(--gold-ink)]"
       >
-        没有片源？用一段带字幕的示例视频跑一遍
+        没有片源？试学《海边的曼彻斯特》维修片段
       </button>
 
       <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[10.5px] text-[var(--text-faint)]">

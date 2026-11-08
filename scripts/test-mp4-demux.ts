@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import { extractMp4Subtitles, canHandleMp4 } from '../lib/demux/mp4';
 
-const path = process.argv[2] ?? 'public/sample/demo.mp4';
+const path = process.argv[2] ?? 'public/sample/manchester-repair-v2.mp4';
 
 function fmt(s: number) {
   const m = Math.floor(s / 60);
@@ -34,9 +34,9 @@ async function main() {
     }
   }
 
-  if (!path.includes('demo.mp4')) return;
+  if (!path.includes('demo.mp4') && !path.includes('manchester-repair-v2.mp4')) return;
 
-  console.log('\n=== 断言（demo.mp4）===');
+  console.log('\n=== 断言（维修对话示例）===');
   let pass = 0;
   let total = 0;
   const t = (name: string, ok: boolean, extra = '') => {
@@ -49,20 +49,23 @@ async function main() {
   t('只识别出 1 条字幕轨', tracks.length === 1, `实际 ${tracks.length}`);
   t('是 tx3g', main0?.codec === 'tx3g', main0?.codec ?? '-');
   t('语言标为 chi', main0?.lang === 'chi', main0?.lang ?? '-');
-  t('共 46 条', main0?.cues.length === 46, String(main0?.cues.length ?? 0));
+  t('共 16 条', main0?.cues.length === 16, String(main0?.cues.length ?? 0));
   t(
-    '第一条是引擎那句',
-    /motor'?s gonna die tomorrow/i.test(main0?.cues[0]?.text ?? '')
+    '第一条是更换止水塞',
+    /You need a new stopper/i.test(main0?.cues[0]?.text ?? '')
   );
   t(
     '每条都带中文',
-    (main0?.cues.filter((c) => /[\u4e00-\u9fa5]/.test(c.text)).length ?? 0) === 46
+    (main0?.cues.filter((c) => /[\u4e00-\u9fa5]/.test(c.text)).length ?? 0) === 16
   );
   t(
     '时间轴递增',
     (main0?.cues.every((c, i) => i === 0 || c.start >= main0.cues[i - 1].start) ?? false)
   );
   t('结束时间大于开始', (main0?.cues.every((c) => c.end > c.start) ?? false));
+  t('第一句时间为 0–1.568 秒', main0?.cues[0]?.start === 0 && main0?.cues[0]?.end === 1.568);
+  t('第二句时间为 2.169–4.204 秒', main0?.cues[1]?.start === 2.169 && main0?.cues[1]?.end === 4.204);
+  t('句间空白保留', main0?.cues[0]?.end === 1.568 && main0?.cues[1]?.start === 2.169);
 
   console.log(`\n结果: ${pass}/${total}`);
   process.exit(pass === total ? 0 : 1);
