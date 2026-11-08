@@ -22,8 +22,8 @@ export default function Nav() {
           : 'border-[var(--line)] bg-[rgb(var(--bg-rgb)/0.95)] backdrop-blur-md'
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-[1120px] items-center px-4 sm:px-6">
-        <Link href="/" className="mr-5 flex shrink-0 items-center gap-2 rounded-md" aria-label="Replay 首页">
+      <div className="mx-auto flex h-16 max-w-[1120px] items-center px-3 sm:px-6">
+        <Link href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 4.2A1.2 1.2 0 0 1 4.2 3h5.6A3.2 3.2 0 0 1 13 6.2v5.6A1.2 1.2 0 0 1 11.8 13H6.2A3.2 3.2 0 0 1 3 9.8V4.2Z" stroke="white" strokeWidth="1.4" />
@@ -46,7 +46,7 @@ export default function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative flex shrink-0 items-center whitespace-nowrap px-2.5 text-[14px] transition-colors sm:px-3.5 ${
+                className={`relative flex shrink-0 items-center whitespace-nowrap px-1 text-[13px] transition-colors sm:px-3.5 sm:text-[14px] ${
                   isLearn
                     ? active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                     : active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
@@ -61,7 +61,7 @@ export default function Nav() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2 pl-1 sm:pl-0">
           <ThemeToggle />
           {isLearn ? (
             <span className="hidden text-[12px] text-[var(--text-faint)] sm:block">本地运行</span>

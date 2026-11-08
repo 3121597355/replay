@@ -15,7 +15,7 @@ export default function ThemeToggle() {
   }, []);
 
   const toggle = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    const next: Theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
     document.documentElement.dataset.theme = next;
     try {
@@ -31,17 +31,17 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? '切换到白天模式' : '切换到夜间模式'}
-      title={isDark ? '切换到白天模式' : '切换到夜间模式'}
+      aria-label={isDark ? '切换到浅色模式' : '切换到深色模式'}
+      title={isDark ? '当前深色，点击切换浅色' : '当前浅色，点击切换深色'}
       aria-pressed={isDark}
-      className="grid h-8 w-8 place-items-center rounded-md border border-[var(--line)] text-[var(--text-dim)] transition-[background-color,color,border-color,transform] duration-200 hover:-translate-y-px hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+      className="inline-flex h-11 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors duration-200 hover:bg-[var(--surface-3)] active:bg-[var(--surface-3)] sm:h-9 sm:px-2.5"
     >
       <svg
         width="16"
         height="16"
         viewBox="0 0 24 24"
         fill="none"
-        className={`transition-transform duration-500 ${mounted ? '' : 'opacity-0'} ${isDark ? 'rotate-0' : 'rotate-180'}`}
+        className={`shrink-0 transition-transform duration-300 ${isDark ? 'rotate-0' : 'rotate-180'}`}
         aria-hidden="true"
       >
         {isDark ? (
@@ -64,6 +64,8 @@ export default function ThemeToggle() {
           </>
         )}
       </svg>
+      <span className="whitespace-nowrap text-[12px] font-semibold" aria-hidden="true">{isDark ? '深色' : '浅色'}</span>
+      <span className="sr-only" role="status">{mounted ? `当前为${isDark ? '深色' : '浅色'}模式` : ''}</span>
     </button>
   );
 }
