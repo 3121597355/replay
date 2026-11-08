@@ -24,6 +24,14 @@ function controlledProcess() {
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
+async function waitUntil(predicate) {
+  const deadline = Date.now() + 1000;
+  while (!predicate() && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  assert.ok(predicate(), 'Download state did not settle before the deadline');
+}
+
 test('rejects excessive pending tasks and terminates stalled downloads', async () => {
   const manager = createDownloadManager({
     ytDlpPath: 'yt-dlp', downloadsDir: 'C:\\downloads',
@@ -40,8 +48,9 @@ test('rejects excessive pending tasks and terminates stalled downloads', async (
 
 test('stops a transfer whose actual temporary output exceeds its size budget', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'video-downloader-size-'));
+  let lastChild;
   const manager = createDownloadManager({
-    ytDlpPath: 'yt-dlp', downloadsDir: root, processFactory: controlledProcess,
+    ytDlpPath: 'yt-dlp', downloadsDir: root, processFactory: () => { lastChild = controlledProcess(); return lastChild; },
     maxFileBytes: 8, sizeCheckMs: 10,
   });
   const task = manager.create({ title: 'Clip', item: { resolver: 'yt-dlp', sourceUrl: 'https://example.com/video' } });
@@ -49,6 +58,13 @@ test('stops a transfer whose actual temporary output exceeds its size budget', a
   await new Promise(resolve => setTimeout(resolve, 80));
   assert.equal(manager.get(task.id).status, 'failed');
   assert.match(manager.get(task.id).error, /容量限制/);
+  const fast = manager.create({ title: 'Fast', item: { resolver: 'yt-dlp', sourceUrl: 'https://example.com/video' } });
+  await tick();
+  await fs.writeFile(path.join(root, fast.filename), Buffer.alloc(9));
+  lastChild.emit('close', 0);
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(manager.get(fast.id).status, 'failed');
+  assert.match(manager.get(fast.id).error, /容量限制/);
   assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
   await fs.rm(root, { recursive: true, force: true });
 });
@@ -112,8 +128,7 @@ test('runs at most two download processes and drains the queue', async () => {
   assert.equal(manager.get(third.id).status, 'queued');
 
   children[0].emit('close', 0);
-  await tick();
-  await tick();
+  await waitUntil(() => children.length === 3);
   assert.equal(children.length, 3);
   assert.equal(manager.get(first.id).status, 'completed');
   assert.equal(manager.get(third.id).status, 'downloading');
@@ -168,8 +183,7 @@ test('pauses queued work before it starts', async () => {
 
   assert.equal(manager.pause(second.id).status, 'paused');
   children[0].emit('close', 0);
-  await tick();
-  await tick();
+  await waitUntil(() => manager.get(first.id).status === 'completed');
   assert.equal(manager.get(first.id).status, 'completed');
   assert.equal(children.length, 1);
 });
@@ -195,7 +209,7 @@ test('updates progress and completes a task with a safe filename', async () => {
   assert.equal(manager.get(task.id).filename, 'Demo clip.mp4');
 
   child.emit('close', 0);
-  await tick();
+  await waitUntil(() => manager.get(task.id).status === 'completed');
   assert.equal(manager.get(task.id).status, 'completed');
   assert.equal(manager.get(task.id).progress, 100);
 });
@@ -423,7 +437,7 @@ test('removes one completed history task without deleting its output file', asyn
   });
   await tick();
   child.emit('close', 0);
-  await tick();
+  await waitUntil(() => manager.get(task.id).status === 'completed');
 
   assert.equal(manager.removeHistory(task.id), true);
   assert.equal(manager.get(task.id), null);

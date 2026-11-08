@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/video-downloader]
   pull_request:
   workflow_dispatch:
 
@@ -11,6 +11,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  downloader:
+    name: Downloader checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Downloader unit checks
+        working-directory: services/video-downloader
+        run: node --test tests/*.test.mjs
+
   build:
     name: Typecheck & build
     runs-on: ubuntu-latest

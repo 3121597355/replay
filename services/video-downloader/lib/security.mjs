@@ -64,7 +64,9 @@ export function isPrivateIp(address) {
   if (family !== 6) return true;
 
   // Canonicalize dotted and expanded IPv4-mapped IPv6 before checking ranges.
-  const normalized = new URL(`http://[${address}]/`).hostname.slice(1, -1);
+  let normalized;
+  try { normalized = new URL(`http://[${address}]/`).hostname.slice(1, -1); }
+  catch { return true; }
   const mapped = normalized.match(/^::ffff:([\da-f]{1,4}):([\da-f]{1,4})$/);
   if (mapped) {
     const high = Number.parseInt(mapped[1], 16);

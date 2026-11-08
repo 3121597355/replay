@@ -331,7 +331,8 @@ export function createDownloadManager({
         const names = await fs.promises.readdir(downloadsDir);
         const name = path.basename(outputPath);
         let total = 0;
-        for (const entry of names.filter(entry => entry === name || entry.startsWith(`${name}.`))) {
+        const stem = path.basename(name, path.extname(name));
+        for (const entry of names.filter(entry => entry === name || entry.startsWith(`${name}.`) || entry.startsWith(`${stem}.f`))) {
           const stat = await fs.promises.stat(path.join(downloadsDir, entry));
           if (stat.isFile()) total += stat.size;
         }
@@ -368,6 +369,10 @@ export function createDownloadManager({
       clearTimeout(timeout);
       clearInterval(sizeTimer);
       error = limitError ?? error;
+      if (!error && code === 0) {
+        const stat = await fs.promises.stat(outputPath).catch(() => null);
+        if (stat && stat.size > maxFileBytes) error = new Error('下载文件超过容量限制，已停止；请使用更小的片段。');
+      }
       await removeTemporaryInput(task);
       if (task.pauseRequested) {
         releasePausedTask(task);
