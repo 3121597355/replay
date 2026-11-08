@@ -7,12 +7,14 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 
 import {
-  createDownloadManager,
+  createDownloadManager as createRealDownloadManager,
   parseFfmpegDuration,
   parseFfmpegProgress,
   parseYtDlpProgress,
   prepareHlsManifest,
 } from '../lib/download.mjs';
+
+const createDownloadManager = options => createRealDownloadManager({ probe: async () => ({ streams: [] }), ...options });
 
 function controlledProcess() {
   const child = new EventEmitter();
@@ -31,6 +33,37 @@ async function waitUntil(predicate) {
   }
   assert.ok(predicate(), 'Download state did not settle before the deadline');
 }
+
+test('keeps the queue slot and pending budget until subtitle separation completes', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'subtitle-queue-'));
+  const children = [];
+  let release;
+  const processing = new Promise(resolve => { release = resolve; });
+  const manager = createDownloadManager({
+    ytDlpPath: 'yt-dlp', downloadsDir: root, maxConcurrent: 1, maxPending: 2,
+    processFactory: () => { const child = controlledProcess(); children.push(child); return child; },
+    subtitleProcessor: () => processing,
+  });
+  try {
+    const input = { title: 'Clip', item: { resolver: 'yt-dlp', sourceUrl: 'https://example.com/watch' } };
+    const first = manager.create(input);
+    const second = manager.create(input);
+    await waitUntil(() => children.length === 1);
+    await fs.writeFile(path.join(root, first.filename), 'downloaded-video');
+    children[0].emit('close', 0);
+    await waitUntil(() => manager.get(first.id).status === 'processing');
+    assert.equal(manager.get(second.id).status, 'queued');
+    assert.throws(() => manager.create(input), /任务已满/);
+    release({ subtitles: [], subtitleStatus: 'none', subtitleWarning: '' });
+    await waitUntil(() => children.length === 2);
+    assert.equal(manager.get(first.id).status, 'completed');
+    children[1].emit('close', 1);
+    await waitUntil(() => manager.get(second.id).status === 'failed');
+  } finally {
+    assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
 
 test('rejects excessive pending tasks and terminates stalled downloads', async () => {
   const manager = createDownloadManager({

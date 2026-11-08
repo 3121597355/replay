@@ -17,6 +17,7 @@ const DEFAULT_BROWSER_PROFILE_DIR = path.join(ROOT, 'data', 'browser-profile');
 const DEFAULT_YTDLP_PATH = process.env.YTDLP_PATH || (process.platform === 'win32'
   ? path.join(ROOT, 'tools', 'yt-dlp.exe') : 'yt-dlp');
 const DEFAULT_FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
+const DEFAULT_FFPROBE_PATH = process.env.FFPROBE_PATH || 'ffprobe';
 const JSON_LIMIT = 16 * 1024;
 const CACHE_TTL = 10 * 60 * 1000;
 const CACHE_MAX = 25;
@@ -109,6 +110,10 @@ function clientTask(task) {
     fileUrl: task.status === 'completed' && task.fileAvailable
       ? `/api/files/${encodeURIComponent(task.filename)}`
       : null,
+    subtitles: (task.subtitles ?? []).map(file => ({
+      ...file, fileUrl: task.status === 'completed' && file.fileAvailable
+        ? `/api/files/${encodeURIComponent(file.filename)}` : null,
+    })),
   };
 }
 
@@ -203,7 +208,7 @@ export function createServer({
 
     try {
       if (request.method === 'GET' && pathname === '/api/health') {
-        sendJson(response, 200, { ok: true, dependencies });
+        sendJson(response, 200, { ok: true, dependencies, features: ['srt-separation'] });
         return;
       }
 
@@ -373,10 +378,13 @@ export function createServer({
         try {
           name = decodeURIComponent(pathname.slice('/api/files/'.length));
           const filename = resolveDownloadPath(downloadsDir, name);
-          const stat = await fs.promises.stat(filename);
-          if (!stat.isFile()) throw new Error('Not a file.');
+          const extension = path.extname(filename).toLowerCase();
+          if (!['.mp4', '.srt'].includes(extension)) throw new Error('Unsupported file.');
+          const stat = await fs.promises.lstat(filename);
+          if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Not a file.');
           response.writeHead(200, {
-            'content-type': 'video/mp4',
+            'content-type': extension === '.srt' ? 'application/x-subrip; charset=utf-8' : 'video/mp4',
+            'x-content-type-options': 'nosniff',
             'content-length': stat.size,
             'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(filename))}`,
             'cache-control': 'private, no-store',
@@ -428,6 +436,7 @@ async function start() {
   const dependencies = {
     ytDlp: commandAvailable(DEFAULT_YTDLP_PATH, ['--version']),
     ffmpeg: commandAvailable(DEFAULT_FFMPEG_PATH, ['-version']),
+    ffprobe: commandAvailable(DEFAULT_FFPROBE_PATH, ['-version']),
     browser: Boolean(findBrowserExecutable()),
   };
   const browserPath = findBrowserExecutable();
@@ -456,11 +465,13 @@ async function start() {
   const downloadManager = createDownloadManager({
     ytDlpPath: dependencies.ytDlp ? DEFAULT_YTDLP_PATH : null,
     ffmpegPath: dependencies.ffmpeg ? DEFAULT_FFMPEG_PATH : null,
+    ffprobePath: DEFAULT_FFPROBE_PATH,
+    subtitleLanguages: process.env.SUBTITLE_LANGS || 'en.*,zh.*,-live_chat',
     downloadsDir: DEFAULT_DOWNLOADS_DIR,
     historyFile: DEFAULT_HISTORY_FILE,
   });
   const server = createServer({ resolver, interactiveResolver, downloadManager, dependencies });
-  const port = Number(process.env.PORT || 45210);
+  const port = Number(process.env.PORT || 45211);
   server.listen(port, '127.0.0.1', () => {
     console.log(`Video Downloader: http://127.0.0.1:${port}`);
   });

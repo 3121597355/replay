@@ -5,7 +5,7 @@ import { normalizePublicUrl, sanitizeFilename } from './security.mjs';
 
 const MAX_PROCESS_OUTPUT = 5 * 1024 * 1024;
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
-const DIRECT_MEDIA_RE = /\.(mp4|m3u8)(?:$|[?#])/i;
+const DIRECT_MEDIA_RE = /\.(mp4|mkv|mov|webm|m3u8)(?:$|[?#])/i;
 
 function decodeHtml(value) {
   return String(value ?? '')

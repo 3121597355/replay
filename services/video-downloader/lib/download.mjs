@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { normalizePublicUrl, sanitizeFilename } from './security.mjs';
+import { probeMedia, separateSubtitles, textSubtitleStreams } from './subtitles.mjs';
 
 const HISTORY_VERSION = 1;
 const HISTORY_LIMIT = 50;
@@ -97,6 +98,9 @@ function publicTask(task) {
     error: task.error,
     createdAt: task.createdAt,
     completedAt: task.completedAt,
+    subtitles: task.subtitles ?? [],
+    subtitleStatus: task.subtitleStatus ?? 'unchecked',
+    subtitleWarning: task.subtitleWarning ?? '',
   };
 }
 
@@ -141,6 +145,9 @@ function addChunkLines(onLine) {
 export function createDownloadManager({
   ytDlpPath,
   ffmpegPath,
+  ffprobePath = 'ffprobe',
+  probe = probeMedia,
+  subtitleProcessor = separateSubtitles,
   downloadsDir,
   processFactory = spawn,
   verifyOutput = defaultVerifyOutput,
@@ -151,6 +158,7 @@ export function createDownloadManager({
   taskTimeoutMs = 10 * 60_000,
   maxFileBytes = 500 * 1024 * 1024,
   sizeCheckMs = 1000,
+  subtitleLanguages = 'en.*,zh.*,-live_chat',
   historyFile,
 } = {}) {
   const tasks = new Map();
@@ -161,8 +169,13 @@ export function createDownloadManager({
     const base = sanitizeFilename(title);
     let candidate = `${base}.mp4`;
     let suffix = 2;
-    const inUse = () => fs.existsSync(path.join(downloadsDir, candidate))
-      || [...tasks.values()].some((task) => task.filename === candidate && task.status !== 'failed');
+    const inUse = () => {
+      const stem = path.basename(candidate, '.mp4');
+      let siblings = [];
+      try { siblings = fs.readdirSync(downloadsDir); } catch {}
+      return siblings.some(name => name === candidate || name.startsWith(`${stem}.`))
+        || [...tasks.values()].some(task => task.filename === candidate);
+    };
     while (inUse()) candidate = `${base} (${suffix++}).mp4`;
     return candidate;
   }
@@ -180,6 +193,10 @@ export function createDownloadManager({
       ...value,
       fileAvailable: task.status === 'completed'
         && fs.existsSync(path.join(downloadsDir, task.filename)),
+      subtitles: value.subtitles.map(subtitle => ({
+        ...subtitle, fileAvailable: task.status === 'completed'
+          && fs.existsSync(path.join(downloadsDir, subtitle.filename)),
+      })),
     };
   }
 
@@ -199,7 +216,7 @@ export function createDownloadManager({
 
   let restoredInterrupted = false;
   for (const record of loadHistory(historyFile)) {
-    const wasActive = ['queued', 'downloading', 'paused'].includes(record.status);
+    const wasActive = ['queued', 'downloading', 'processing', 'paused'].includes(record.status);
     const restored = {
       id: record.id,
       status: wasActive ? 'failed' : (record.status === 'completed' ? 'completed' : 'failed'),
@@ -209,6 +226,13 @@ export function createDownloadManager({
       elapsed: Number.isFinite(Number(record.elapsed)) ? Number(record.elapsed) : null,
       title: sanitizeFilename(record.title),
       filename: sanitizeFilename(record.filename || 'video.mp4'),
+      subtitles: Array.isArray(record.subtitles) ? record.subtitles.filter(file =>
+        typeof file.filename === 'string' && file.filename.endsWith('.srt')
+        && sanitizeFilename(file.filename) === file.filename).map(file => ({
+        filename: file.filename, language: sanitizeFilename(file.language || 'und'),
+      })) : [],
+      subtitleStatus: ['available', 'none', 'unavailable'].includes(record.subtitleStatus) ? record.subtitleStatus : 'unchecked',
+      subtitleWarning: String(record.subtitleWarning || '').slice(0, 1000),
       error: wasActive ? '下载器重启，任务已中断。' : (record.error ? String(record.error) : null),
       createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date().toISOString(),
       completedAt: wasActive
@@ -246,7 +270,8 @@ export function createDownloadManager({
     task.status = 'downloading';
     task.error = null;
     persist();
-    const outputPath = path.join(downloadsDir, task.filename);
+    const finalPath = path.join(downloadsDir, task.filename);
+    let outputPath = finalPath;
     let executable;
     let args;
 
@@ -259,6 +284,10 @@ export function createDownloadManager({
         '--retries', '2',
         '--fragment-retries', '2',
         '--max-filesize', String(maxFileBytes),
+        '--write-subs', '--write-auto-subs', '--sub-langs', subtitleLanguages,
+        '--sub-format', 'srt/vtt/ass/best', '--convert-subs', 'srt',
+        '--ignore-errors',
+        ...(ffmpegPath && path.isAbsolute(ffmpegPath) ? ['--ffmpeg-location', ffmpegPath] : []),
         '--newline',
         '--no-playlist',
         '--merge-output-format', 'mp4',
@@ -291,6 +320,27 @@ export function createDownloadManager({
         await fs.promises.writeFile(task.temporaryInput, manifest, { encoding: 'utf8', flag: 'wx' });
         input = task.temporaryInput;
       }
+      const inputArgs = [
+        '-user_agent', userAgent, '-referer', referer,
+        ...(cookies ? ['-cookies', cookies] : []),
+        ...(task.temporaryInput ? ['-protocol_whitelist', 'file,http,https,tcp,tls,crypto'] : []),
+      ];
+      let tracks = [];
+      try {
+        const metadata = await probe(input, { ffprobePath, inputArgs, timeoutMs: 45_000, onProcess: child => { task.child = child; } });
+        const textTracks = textSubtitleStreams(metadata);
+        tracks = textTracks.slice(0, 8);
+        const notices = [];
+        if ((metadata.streams ?? []).filter(stream => stream.codec_type === 'subtitle').length > textTracks.length) {
+          notices.push('含图片或不支持的字幕，这些轨道无法直接分离为 SRT。');
+        }
+        if (textTracks.length > 8) notices.push('字幕轨较多，本次最多导出 8 条。');
+        task.subtitleWarning = notices.join(' ');
+      } catch {
+        task.subtitleWarning = '源字幕检测失败，视频会继续下载；无法确认是否包含可分离字幕。';
+      }
+      if (task.pauseRequested) { await removeTemporaryInput(task); releasePausedTask(task); return; }
+      if (tracks.length) outputPath = path.join(downloadsDir, `.source-${task.id}.mkv`);
       args = [
         '-y',
         '-user_agent', userAgent,
@@ -302,8 +352,9 @@ export function createDownloadManager({
         '-i', input,
         '-map', '0:v?',
         '-map', '0:a?',
+        ...tracks.flatMap(track => ['-map', `0:${track.index}`]),
         '-c', 'copy',
-        '-movflags', '+faststart',
+        ...(tracks.length ? ['-c:s', 'srt'] : ['-movflags', '+faststart']),
         '-progress', 'pipe:1',
         '-nostats',
         outputPath,
@@ -332,7 +383,7 @@ export function createDownloadManager({
         const name = path.basename(outputPath);
         let total = 0;
         const stem = path.basename(name, path.extname(name));
-        for (const entry of names.filter(entry => entry === name || entry.startsWith(`${name}.`) || entry.startsWith(`${stem}.f`))) {
+        for (const entry of names.filter(entry => entry === name || entry.startsWith(`${stem}.`))) {
           const stat = await fs.promises.stat(path.join(downloadsDir, entry));
           if (stat.isFile()) total += stat.size;
         }
@@ -379,8 +430,41 @@ export function createDownloadManager({
         return;
       }
       task.child = null;
+      let valid = !error && code === 0 && await verifyOutput(outputPath);
+      if (valid && fs.existsSync(outputPath)) {
+        task.status = 'processing';
+        task.subtitleStatus = 'extracting';
+        persist();
+        try {
+          const initialWarning = task.subtitleWarning;
+          const result = await subtitleProcessor(outputPath, finalPath, {
+            ffmpegPath: ffmpegPath || 'ffmpeg', ffprobePath, maxFileBytes,
+            onProcess: child => { task.child = child; },
+          });
+          Object.assign(task, result);
+          task.subtitleWarning = [initialWarning, result.subtitleWarning].filter(Boolean).join(' ');
+          if (task.subtitleWarning && !task.subtitles.length) task.subtitleStatus = 'unavailable';
+          valid = await verifyOutput(finalPath);
+          if (valid && outputPath !== finalPath) await fs.promises.rm(outputPath, { force: true });
+        } catch {
+          task.subtitles = [];
+          task.subtitleStatus = 'unavailable';
+          task.subtitleWarning = '字幕分离失败，请检查 FFprobe/FFmpeg 或源字幕。';
+          valid = outputPath === finalPath && await verifyOutput(finalPath);
+          if (!valid) error = new Error('视频已下载，但视频与字幕分离失败，请检查源字幕或 FFmpeg。');
+        }
+      }
+      task.child = null;
       task.running = false;
-      if (!error && code === 0 && await verifyOutput(outputPath)) {
+      if (valid) {
+        let totalBytes = (await fs.promises.stat(finalPath).catch(() => null))?.size ?? 0;
+        for (const subtitle of task.subtitles) totalBytes += (await fs.promises.stat(path.join(downloadsDir, subtitle.filename)).catch(() => null))?.size ?? 0;
+        if (totalBytes > maxFileBytes) {
+          valid = false;
+          error = new Error('视频与字幕输出超过容量限制。');
+        }
+      }
+      if (valid) {
         task.status = 'completed';
         task.progress = 100;
         task.speed = null;
@@ -427,7 +511,7 @@ export function createDownloadManager({
   return {
     create({ title, item }) {
       if (!item || !item.sourceUrl) throw new Error('A resolved media item is required.');
-      const pending = [...tasks.values()].filter(task => ['queued', 'downloading', 'paused'].includes(task.status));
+      const pending = [...tasks.values()].filter(task => ['queued', 'downloading', 'processing', 'paused'].includes(task.status));
       if (pending.length >= maxPending) {
         throw new Error('下载任务已满，请等待现有任务完成后再试。');
       }
@@ -443,6 +527,9 @@ export function createDownloadManager({
         error: null,
         createdAt: new Date().toISOString(),
         completedAt: null,
+        subtitles: [],
+        subtitleStatus: 'unchecked',
+        subtitleWarning: '',
         item,
         child: null,
         temporaryInput: null,

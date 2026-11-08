@@ -138,7 +138,7 @@ test('reports health and dependency availability', async () => {
   await withServer({}, async ({ baseUrl }) => {
     const response = await json(await fetch(`${baseUrl}/api/health`));
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, dependencies: { ytDlp: true, ffmpeg: true } });
+    assert.deepEqual(response.body, { ok: true, dependencies: { ytDlp: true, ffmpeg: true }, features: ['srt-separation'] });
   });
 });
 
@@ -306,5 +306,23 @@ test('serves completed files and blocks traversal', async () => {
 
     const traversal = await fetch(`${baseUrl}/api/files/${encodeURIComponent('../secret.txt')}`);
     assert.ok([400, 404].includes(traversal.status));
+  });
+});
+
+test('serves SRT separately and exposes subtitle links in completed history', async () => {
+  const task = { id: 'sub-task', status: 'completed', filename: 'clip.mp4', fileAvailable: true,
+    subtitleStatus: 'available', subtitles: [{ filename: 'clip.eng.2.srt', language: 'eng', fileAvailable: true }] };
+  await withServer({ downloadManager: { list: () => [task] } }, async ({ baseUrl, downloadsDir }) => {
+    const srt = '1\n00:00:01,000 --> 00:00:02,000\nHello.\n';
+    await fs.writeFile(path.join(downloadsDir, 'clip.eng.2.srt'), srt);
+    const history = await (await fetch(`${baseUrl}/api/downloads`)).json();
+    assert.equal(history.items[0].subtitles[0].fileUrl, '/api/files/clip.eng.2.srt');
+    const response = await fetch(baseUrl + history.items[0].subtitles[0].fileUrl);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /subrip.*utf-8/);
+    assert.match(response.headers.get('content-disposition'), /attachment/);
+    assert.equal(await response.text(), srt);
+    await fs.writeFile(path.join(downloadsDir, 'private.json'), '{}');
+    assert.equal((await fetch(`${baseUrl}/api/files/private.json`)).status, 404);
   });
 });

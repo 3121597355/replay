@@ -22,6 +22,15 @@ jobs:
       - name: Downloader unit checks
         working-directory: services/video-downloader
         run: node --test tests/*.test.mjs
+      - name: Ensure media tools
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+      - name: Real video and subtitle separation
+        working-directory: services/video-downloader
+        run: node scripts/test-subtitles-real.mjs
 
   build:
     name: Typecheck & build

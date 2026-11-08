@@ -59,10 +59,32 @@ try {
   ], { encoding: 'utf8', windowsHide: true }));
   assert(metadata.streams.some(stream => stream.codec_type === 'video'));
   assert(metadata.streams.some(stream => stream.codec_type === 'audio'));
+  assert(!metadata.streams.some(stream => stream.codec_type === 'subtitle'), 'The MP4 must contain video/audio only');
+  const subtitleReports = [];
+  const cues = text => text.replace(/\r/g, '').trim().split(/\n\s*\n/).map(block => {
+    const lines = block.split('\n');
+    const timeIndex = lines.findIndex(line => line.includes(' --> '));
+    return { time: lines[timeIndex], text: lines.slice(timeIndex + 1).join('\n').replace(/<[^>]*>/g, '').trim() };
+  });
+  for (const subtitle of task.subtitles ?? []) {
+    assert(subtitle.fileAvailable && subtitle.fileUrl);
+    const local = await fs.readFile(path.join(root, subtitle.filename), 'utf8');
+    const served = await fetch(base + subtitle.fileUrl);
+    assert.equal(served.status, 200);
+    assert.match(served.headers.get('content-type'), /subrip/);
+    assert.equal(await served.text(), local);
+    const parsed = cues(local);
+    if (process.argv[4]) assert.deepEqual(parsed, cues(await fs.readFile(process.argv[4], 'utf8')),
+      'Extracted subtitle text and timestamps must match the original paired SRT');
+    subtitleReports.push({ filename: subtitle.filename, cues: parsed.length, bytes: Buffer.byteLength(local) });
+  }
+  if (process.argv[4]) assert(subtitleReports.length, 'Expected an extracted subtitle');
   const report = {
     result: 'pass', sourceUrl, status: task.status, bytes: bytes.length,
-    sha256: createHash('sha256').update(bytes).digest('hex'), metadata,
-    verified: ['real FFmpeg download', 'completed task status', 'file bytes agree', 'video and audio streams'],
+    sha256: createHash('sha256').update(bytes).digest('hex'), metadata, subtitles: subtitleReports,
+    verified: ['real FFmpeg download', 'completed task status', 'file bytes agree', 'video/audio-only MP4',
+      ...(subtitleReports.length ? ['SRT file API retrieval'] : []),
+      ...(process.argv[4] ? ['subtitle text and every timestamp agree with original SRT'] : [])],
   };
   if (process.argv[3]) await fs.writeFile(process.argv[3], JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));

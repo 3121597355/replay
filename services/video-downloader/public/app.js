@@ -119,6 +119,7 @@ function taskLabel(status) {
   return {
     queued: '等待下载',
     downloading: '正在下载',
+    processing: '正在分离字幕',
     paused: '已暂停',
     completed: '下载完成',
     failed: '下载失败',
@@ -127,8 +128,8 @@ function taskLabel(status) {
 
 function updateProgress(track, value, metric, task) {
   const progress = Math.min(100, Math.max(0, Number(task.progress) || 0));
-  const active = ['queued', 'downloading'].includes(task.status);
-  const indeterminate = active && progress === 0;
+  const active = ['queued', 'downloading', 'processing'].includes(task.status);
+  const indeterminate = active && (progress === 0 || task.status === 'processing');
   track.classList.toggle('is-indeterminate', indeterminate);
   value.style.width = indeterminate ? '' : `${progress}%`;
   track.setAttribute('aria-valuenow', String(Math.round(progress)));
@@ -138,6 +139,24 @@ function updateProgress(track, value, metric, task) {
   if (task.speed) metrics.push(task.speed);
   if (task.eta) metrics.push(`剩余 ${task.eta}`);
   metric.textContent = metrics.join(' · ');
+}
+
+function renderSubtitles(container, note, task) {
+  container.replaceChildren();
+  const files = (task.subtitles || []).filter(file => file.fileAvailable && file.fileUrl);
+  for (const file of files) {
+    const link = document.createElement('a');
+    link.className = 'button button-secondary subtitle-download';
+    link.href = file.fileUrl;
+    link.setAttribute('download', file.filename);
+    link.textContent = `保存 ${file.language || ''} SRT`;
+    container.append(link);
+  }
+  note.hidden = !['completed', 'processing'].includes(task.status);
+  note.textContent = task.status === 'processing' ? '视频已下载，正在导出字幕…'
+    : task.subtitleWarning || (files.length ? `已分离 ${files.length} 个 SRT，与 MP4 分别保存。`
+      : task.subtitleStatus === 'unchecked' ? '旧记录尚未提取字幕，可重新下载。'
+      : '未发现可导出的文本字幕；画面中的字幕无法直接分离。');
 }
 
 async function openDownloads(button = openFolderButton) {
@@ -165,6 +184,7 @@ function updateTask(nodes, task) {
   nodes.taskError.hidden = !task.error;
   nodes.taskError.textContent = task.error || '';
   nodes.actions.hidden = task.status !== 'completed' || !task.fileUrl;
+  renderSubtitles(nodes.subtitleLinks, nodes.subtitleNote, task);
   updateProgress(nodes.progressTrack, nodes.progressValue, nodes.taskMetric, task);
   const pausable = ['queued', 'downloading', 'paused'].includes(task.status);
   nodes.taskToggle.hidden = !pausable;
@@ -183,7 +203,7 @@ function updateTask(nodes, task) {
     nodes.downloadButton.querySelector('span').textContent = '重试';
   } else {
     nodes.downloadButton.disabled = true;
-    nodes.downloadButton.querySelector('span').textContent = task.status === 'paused' ? '已暂停' : '下载中';
+    nodes.downloadButton.querySelector('span').textContent = task.status === 'paused' ? '已暂停' : task.status === 'processing' ? '分离字幕中' : '下载中';
   }
 }
 
@@ -209,7 +229,7 @@ async function pollTask(taskId, nodes) {
   try {
     const task = await api(`/api/downloads/${encodeURIComponent(taskId)}`);
     updateTask(nodes, task);
-    if (['queued', 'downloading'].includes(task.status)) {
+    if (['queued', 'downloading', 'processing'].includes(task.status)) {
       window.setTimeout(() => pollTask(taskId, nodes), 750);
     }
   } catch (error) {
@@ -257,13 +277,13 @@ function renderHistory(items) {
   const query = historySearch.value.trim().toLocaleLowerCase();
   const counts = {
     all: items.length,
-    active: items.filter((item) => ['queued', 'downloading', 'paused'].includes(item.status)).length,
+    active: items.filter((item) => ['queued', 'downloading', 'processing', 'paused'].includes(item.status)).length,
     completed: items.filter((item) => item.status === 'completed').length,
     failed: items.filter((item) => item.status === 'failed').length,
   };
   const visibleItems = items.filter((item) => {
     const matchesStatus = historyFilter === 'all'
-      || (historyFilter === 'active' ? ['queued', 'downloading', 'paused'].includes(item.status) : item.status === historyFilter);
+      || (historyFilter === 'active' ? ['queued', 'downloading', 'processing', 'paused'].includes(item.status) : item.status === historyFilter);
     return matchesStatus && `${item.title || ''} ${item.filename || ''}`.toLocaleLowerCase().includes(query);
   });
   for (const button of historyFilters.querySelectorAll('button')) {
@@ -302,6 +322,7 @@ function renderHistory(items) {
     error.hidden = !task.error;
     error.textContent = task.error || '';
     const actions = fragment.querySelector('.history-actions');
+    renderSubtitles(fragment.querySelector('.subtitle-links'), fragment.querySelector('.subtitle-note'), task);
     const toggle = fragment.querySelector('.history-toggle');
     const deleteButton = fragment.querySelector('.history-delete');
     const pausable = ['queued', 'downloading', 'paused'].includes(task.status);
@@ -381,7 +402,7 @@ async function loadHistory() {
     throw error;
   } finally {
     historyLoading = false;
-    const active = historyItems.some((item) => ['queued', 'downloading'].includes(item.status));
+    const active = historyItems.some((item) => ['queued', 'downloading', 'processing'].includes(item.status));
     historyTimer = window.setTimeout(() => { void loadHistory().catch(() => {}); }, active ? 750 : 5000);
   }
 }
@@ -406,6 +427,8 @@ function renderResults(result) {
       actions: fragment.querySelector('.task-actions'),
       fileDownload: fragment.querySelector('.file-download'),
       taskToggle: fragment.querySelector('.task-toggle'),
+      subtitleLinks: fragment.querySelector('.subtitle-links'),
+      subtitleNote: fragment.querySelector('.subtitle-note'),
     };
     row.dataset.mediaId = item.id;
     fragment.querySelector('.media-index').textContent = String(index + 1).padStart(2, '0');
@@ -547,6 +570,7 @@ async function checkHealth() {
     const missing = [];
     if (!dependencies.ytDlp) missing.push('yt-dlp');
     if (!dependencies.ffmpeg) missing.push('FFmpeg');
+    if (dependencies.ffprobe === false) missing.push('FFprobe（字幕检测）');
     setServiceStatus(missing.length ? 'warning' : 'ready', missing.length ? '组件待检查' : '本地服务已就绪');
     if (missing.length && statusRegion.hidden) showStatus('warning', '下载组件未就绪', `缺少 ${missing.join('、')}，请检查 tools 目录和系统环境。`);
   } catch {
