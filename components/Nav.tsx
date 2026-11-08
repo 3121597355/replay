@@ -46,7 +46,7 @@ export default function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative flex items-center px-2.5 text-[14px] transition-colors sm:px-3.5 ${
+                className={`relative flex shrink-0 items-center whitespace-nowrap px-2.5 text-[14px] transition-colors sm:px-3.5 ${
                   isLearn
                     ? active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                     : active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
@@ -66,7 +66,7 @@ export default function Nav() {
           {isLearn ? (
             <span className="hidden text-[12px] text-[var(--text-faint)] sm:block">本地运行</span>
           ) : (
-            <Link href="/learn" className="btn btn-primary !h-8 !px-3 !py-0 !text-[13px]">
+            <Link href="/learn" className="btn btn-primary hidden !h-8 !px-3 !py-0 !text-[13px] sm:inline-flex">
               开始学习
             </Link>
           )}
