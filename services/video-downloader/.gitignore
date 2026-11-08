@@ -1,0 +1,7 @@
+data/
+downloads/
+tools/
+*.log
+.env
+.env.*
+!.env.example
