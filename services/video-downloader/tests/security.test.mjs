@@ -91,6 +91,9 @@ test('keeps resolved files inside the downloads directory', () => {
   assert.equal(resolveDownloadPath(root, 'clip.mp4'), path.join(root, 'clip.mp4'));
   assert.throws(() => resolveDownloadPath(root, '..\\secret.txt'), /outside/i);
   assert.throws(() => resolveDownloadPath(root, 'nested/clip.mp4'), /outside/i);
+  assert.throws(() => resolveDownloadPath(root, '../secret.txt'), /outside/i);
+  assert.throws(() => resolveDownloadPath(root, 'nested\\clip.mp4'), /outside/i);
+  assert.throws(() => resolveDownloadPath(root, ''), /outside/i);
 });
 test('blocks canonical and expanded IPv4-mapped private IPv6 addresses', () => {
   for (const address of ['::ffff:127.0.0.1', '::ffff:7f00:1', '0:0:0:0:0:ffff:c0a8:1', '::ffff:169.254.169.254', '::ffff:198.18.0.1']) {

@@ -132,7 +132,11 @@ export function sanitizeFilename(input) {
 
 export function resolveDownloadPath(root, name) {
   const resolvedRoot = path.resolve(root);
-  const target = path.resolve(resolvedRoot, String(name ?? ''));
+  const filename = String(name ?? '');
+  if (!filename || /[\\/\u0000]/.test(filename)) {
+    throw new Error('Requested file is outside the downloads directory.');
+  }
+  const target = path.resolve(resolvedRoot, filename);
   if (path.dirname(target) !== resolvedRoot) {
     throw new Error('Requested file is outside the downloads directory.');
   }
