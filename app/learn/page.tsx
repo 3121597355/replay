@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { estimateLevel, formatTime } from '@/lib/srt';
 import { parseSubtitle, detectFormat, formatLabel } from '@/lib/subtitle';
-import { demoCues, demoTitle, demoSubtitle } from '@/lib/demo';
 import { isSoundCue } from '@/lib/lang';
 import { getWork } from '@/lib/data';
 import { exportAnkiCsv, exportSavedWords, exportSrtBlob } from '@/lib/anki';
@@ -455,18 +454,6 @@ function LearnInner() {
     }
   }
 
-  function loadDemo() {
-    // 演示数据是内置常量，指纹也固定
-    const hash = hashText(demoCues.map((c) => c.text).join('\n'));
-    subHashRef.current = hash;
-    setSubHash(hash);
-    const { list, hits } = hydrateFromCache(demoCues.map((c) => ({ ...c })), hash);
-    setCachedHits(hits);
-    setCues(list);
-    setSourceName(demoTitle);
-    setCurrent(-1);
-    flash(hits > 0 ? `已加载演示片段 · 恢复 ${hits} 句旧译文` : '已加载演示片段');
-  }
 
   // ---------- 目录导入 ----------
   /** 选一个剧集文件夹，扫出视频和字幕并配对 */
@@ -1047,7 +1034,6 @@ function LearnInner() {
             ) : (
               <EmptyVideo
                 onVideo={onVideoFile}
-                onDemo={loadDemo}
                 onSample={() => loadSample('with-subs')}
                 onFolder={pickFolder}
                 scanning={scanning}
@@ -1204,7 +1190,7 @@ function LearnInner() {
             className="max-h-[52vh] flex-1 overflow-y-auto overscroll-contain lg:max-h-none lg:min-h-0"
           >
             {cues.length === 0 ? (
-              <EmptyCues onDemo={loadDemo} />
+              <EmptyCues />
             ) : (
               <div className="divide-y divide-[rgb(var(--fg-rgb)/0.05)]">
                 {cues.map((c, i) => (
@@ -1816,7 +1802,6 @@ function LearnInner() {
             <div className="mt-5 space-y-2.5">
               <Route n="1" title="找一个 srt 文件传进来" desc="字幕站基本都有，对一下片长和帧率就行——这条最快" />
               <Route n="2" title="其实不用换片源" desc="mp4 也能抽软字幕（mov_text）。换片源只在原片本来就没字幕时才有意义" />
-              <Route n="3" title="先看演示" desc="没有片源也能体验完整的学习流程" />
             </div>
 
             <div className="mt-6 flex items-center gap-2">
@@ -1832,15 +1817,6 @@ function LearnInner() {
                 />
                 传一个 srt
               </label>
-              <button
-                onClick={() => {
-                  setNoTrack(false);
-                  loadDemo();
-                }}
-                className="btn btn-ghost !text-[12.5px]"
-              >
-                看演示
-              </button>
               <button
                 onClick={() => setNoTrack(false)}
                 className="ml-auto text-[12px] text-[var(--text-faint)] hover:text-[var(--text-soft)]"
@@ -1967,7 +1943,6 @@ function Route({ n, title, desc }: { n: string; title: string; desc: string }) {
 
 function EmptyVideo({
   onVideo,
-  onDemo,
   onSample,
   onFolder,
   scanning,
@@ -1976,7 +1951,6 @@ function EmptyVideo({
   workTitle,
 }: {
   onVideo: (f?: File) => void;
-  onDemo: () => void;
   onSample: () => void;
   onFolder: () => void;
   scanning: number | null;
@@ -2035,9 +2009,6 @@ function EmptyVideo({
             )}
           </button>
         )}
-        <button onClick={onDemo} className="btn btn-ghost">
-          先看演示
-        </button>
       </div>
 
       {canFolder && (
@@ -2098,7 +2069,7 @@ function EmptyVideo({
   );
 }
 
-function EmptyCues({ onDemo }: { onDemo: () => void }) {
+function EmptyCues() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
       <div className="grid h-11 w-11 place-items-center rounded-full border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.03)]">
@@ -2112,9 +2083,6 @@ function EmptyCues({ onDemo }: { onDemo: () => void }) {
         如果视频自带字幕，点上方「抽字幕」直接抽出来；
         没有的话传一个 .srt / .vtt / .ass 文件
       </p>
-      <button onClick={onDemo} className="mt-1 text-[12px] text-[var(--gold-ink)] hover:text-[var(--gold-ink)]">
-        加载演示片段 →
-      </button>
     </div>
   );
 }
