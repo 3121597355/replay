@@ -32,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{var saved=localStorage.getItem('replay-theme');var theme=saved==='light'||saved==='dark'?saved:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;}catch(e){document.documentElement.dataset.theme='light';}})();`,
           }}
         />
+        <script defer src="https://cloud.umami.is/script.js" data-website-id="10592750-fb71-440a-8f01-bd7e7233432c" />
       </head>
       <body>
         <Nav />
