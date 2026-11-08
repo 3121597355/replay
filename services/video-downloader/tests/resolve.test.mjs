@@ -216,3 +216,17 @@ test('preserves an interactive browser verification timeout', async () => {
     (error) => error === browserError,
   );
 });
+test('terminates a resolver process that never returns', async () => {
+  let killed = false;
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = () => { killed = true; child.emit('close', 1); };
+  const timer = setTimeout(() => {}, 100);
+  try {
+    await assert.rejects(resolveWithYtDlp('https://example.com/video', {
+      ytDlpPath: 'yt-dlp', processFactory: () => child, timeoutMs: 20,
+    }), /解析超时/);
+    assert.equal(killed, true);
+  } finally { clearTimeout(timer); }
+});

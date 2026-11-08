@@ -24,6 +24,35 @@ function controlledProcess() {
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
+test('rejects excessive pending tasks and terminates stalled downloads', async () => {
+  const manager = createDownloadManager({
+    ytDlpPath: 'yt-dlp', downloadsDir: 'C:\\downloads',
+    processFactory: controlledProcess, verifyOutput: async () => true,
+    maxPending: 1, taskTimeoutMs: 25,
+  });
+  const input = { title: 'Clip', item: { resolver: 'yt-dlp', sourceUrl: 'https://example.com/video' } };
+  const task = manager.create(input);
+  assert.throws(() => manager.create(input), /任务已满/);
+  await new Promise(resolve => setTimeout(resolve, 60));
+  assert.equal(manager.get(task.id).status, 'failed');
+  assert.match(manager.get(task.id).error, /时限/);
+});
+
+test('stops a transfer whose actual temporary output exceeds its size budget', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'video-downloader-size-'));
+  const manager = createDownloadManager({
+    ytDlpPath: 'yt-dlp', downloadsDir: root, processFactory: controlledProcess,
+    maxFileBytes: 8, sizeCheckMs: 10,
+  });
+  const task = manager.create({ title: 'Clip', item: { resolver: 'yt-dlp', sourceUrl: 'https://example.com/video' } });
+  await fs.writeFile(path.join(root, `${task.filename}.part`), Buffer.alloc(9));
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal(manager.get(task.id).status, 'failed');
+  assert.match(manager.get(task.id).error, /容量限制/);
+  assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
+  await fs.rm(root, { recursive: true, force: true });
+});
+
 test('parses yt-dlp progress lines', () => {
   assert.deepEqual(parseYtDlpProgress('download:42.5%|1.2MiB/s|00:10'), {
     progress: 42.5,

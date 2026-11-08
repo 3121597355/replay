@@ -11,10 +11,11 @@ import { resolveDownloadPath } from './lib/security.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PUBLIC_DIR = path.join(ROOT, 'public');
-const DEFAULT_DOWNLOADS_DIR = path.join(ROOT, 'downloads');
-const DEFAULT_HISTORY_FILE = path.join(ROOT, 'data', 'download-history.json');
+const DEFAULT_DOWNLOADS_DIR = process.env.DOWNLOADS_DIR || path.join(ROOT, 'downloads');
+const DEFAULT_HISTORY_FILE = process.env.HISTORY_FILE || path.join(ROOT, 'data', 'download-history.json');
 const DEFAULT_BROWSER_PROFILE_DIR = path.join(ROOT, 'data', 'browser-profile');
-const DEFAULT_YTDLP_PATH = path.join(ROOT, 'tools', 'yt-dlp.exe');
+const DEFAULT_YTDLP_PATH = process.env.YTDLP_PATH || (process.platform === 'win32'
+  ? path.join(ROOT, 'tools', 'yt-dlp.exe') : 'yt-dlp');
 const DEFAULT_FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
 const JSON_LIMIT = 16 * 1024;
 const CACHE_TTL = 10 * 60 * 1000;
@@ -182,6 +183,21 @@ export function createServer({
   }
 
   return http.createServer(async (request, response) => {
+    // A loopback companion must reject DNS rebinding and cross-site requests.
+    let host;
+    try { host = new URL(`http://${request.headers.host}`).hostname; } catch {}
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) {
+      sendError(response, 403, 'HOST_FORBIDDEN', '下载器只接受本机访问。');
+      return;
+    }
+    if (request.headers.origin) {
+      let origin;
+      try { origin = new URL(request.headers.origin); } catch {}
+      if (!origin || origin.origin !== `http://${request.headers.host}`) {
+        sendError(response, 403, 'ORIGIN_FORBIDDEN', '此页面不能操作本机下载器。');
+        return;
+      }
+    }
     const requestUrl = new URL(request.url, 'http://127.0.0.1');
     const { pathname } = requestUrl;
 
@@ -402,7 +418,8 @@ export function configureNetworkProxy(httpModule = http, env = process.env) {
   const noProxy = loopbackNoProxy(env.NO_PROXY || env.no_proxy);
   env.NO_PROXY = noProxy;
   env.no_proxy = noProxy;
-  return httpModule.setGlobalProxyFromEnv();
+  return typeof httpModule.setGlobalProxyFromEnv === 'function'
+    ? httpModule.setGlobalProxyFromEnv() : undefined;
 }
 
 async function start() {

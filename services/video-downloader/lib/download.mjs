@@ -147,6 +147,10 @@ export function createDownloadManager({
   validateUrl = normalizePublicUrl,
   lookup,
   maxConcurrent = 2,
+  maxPending = 20,
+  taskTimeoutMs = 10 * 60_000,
+  maxFileBytes = 500 * 1024 * 1024,
+  sizeCheckMs = 1000,
   historyFile,
 } = {}) {
   const tasks = new Map();
@@ -250,6 +254,11 @@ export function createDownloadManager({
       if (!ytDlpPath) throw new Error('yt-dlp is not available.');
       executable = ytDlpPath;
       args = [
+        '--ignore-config',
+        '--socket-timeout', '20',
+        '--retries', '2',
+        '--fragment-retries', '2',
+        '--max-filesize', String(maxFileBytes),
         '--newline',
         '--no-playlist',
         '--merge-output-format', 'mp4',
@@ -310,6 +319,29 @@ export function createDownloadManager({
     let ffmpegBlock = '';
     let ffmpegDuration = Number(task.item.duration) > 0 ? Number(task.item.duration) : null;
     let settled = false;
+    let limitError = null;
+    const timeout = setTimeout(() => {
+      limitError = new Error('下载超过时限，已停止；请使用更短的片段。');
+      child.kill?.();
+    }, taskTimeoutMs);
+    timeout.unref?.();
+    const sizeTimer = setInterval(async () => {
+      if (settled) return;
+      try {
+        const names = await fs.promises.readdir(downloadsDir);
+        const name = path.basename(outputPath);
+        let total = 0;
+        for (const entry of names.filter(entry => entry === name || entry.startsWith(`${name}.`))) {
+          const stat = await fs.promises.stat(path.join(downloadsDir, entry));
+          if (stat.isFile()) total += stat.size;
+        }
+        if (!settled && total > maxFileBytes) {
+          limitError = new Error('下载文件超过容量限制，已停止；请使用更小的片段。');
+          child.kill?.();
+        }
+      } catch { /* Temporary outputs can disappear while remuxing. */ }
+    }, sizeCheckMs);
+    sizeTimer.unref?.();
 
     if (task.item.resolver === 'yt-dlp') {
       child.stdout?.on('data', addChunkLines((line) => {
@@ -333,6 +365,9 @@ export function createDownloadManager({
     const finish = async (error, code) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timeout);
+      clearInterval(sizeTimer);
+      error = limitError ?? error;
       await removeTemporaryInput(task);
       if (task.pauseRequested) {
         releasePausedTask(task);
@@ -387,6 +422,10 @@ export function createDownloadManager({
   return {
     create({ title, item }) {
       if (!item || !item.sourceUrl) throw new Error('A resolved media item is required.');
+      const pending = [...tasks.values()].filter(task => ['queued', 'downloading', 'paused'].includes(task.status));
+      if (pending.length >= maxPending) {
+        throw new Error('下载任务已满，请等待现有任务完成后再试。');
+      }
       const task = {
         id: crypto.randomUUID(),
         status: 'queued',

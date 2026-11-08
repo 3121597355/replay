@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import http from 'node:http';
 
 import { configureNetworkProxy, createServer, loopbackNoProxy } from '../server.mjs';
 
@@ -91,6 +92,28 @@ async function withServer(overrides, fn) {
 async function json(response) {
   return { status: response.status, body: await response.json() };
 }
+
+test('rejects hostile Host and Origin headers before invoking local actions', async () => {
+  await withServer({}, async ({ baseUrl, calls }) => {
+    const hostStatus = await new Promise((resolve, reject) => {
+      const request = http.request(`${baseUrl}/api/open-downloads`, {
+        method: 'POST', headers: { host: 'attacker.example' },
+      }, response => { response.resume(); resolve(response.statusCode); });
+      request.on('error', reject);
+      request.end();
+    });
+    assert.equal(hostStatus, 403);
+    const origin = await fetch(`${baseUrl}/api/open-downloads`, {
+      method: 'POST', headers: { origin: 'https://attacker.example' },
+    });
+    assert.equal(origin.status, 403);
+    assert.equal(calls.opened, 0);
+  });
+});
+
+test('tolerates Node versions without the optional environment proxy API', () => {
+  assert.equal(configureNetworkProxy({}, {}), undefined);
+});
 
 test('enables Node environment proxy support during startup', () => {
   let calls = 0;

@@ -63,17 +63,18 @@ export function isPrivateIp(address) {
 
   if (family !== 6) return true;
 
-  const normalized = address.toLowerCase();
-  const mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateIp(mapped[1]);
-
-  return normalized === '::'
-    || normalized === '::1'
-    || normalized.startsWith('fc')
-    || normalized.startsWith('fd')
-    || /^fe[89ab]/.test(normalized)
-    || normalized.startsWith('ff')
-    || normalized.startsWith('2001:db8:');
+  // Canonicalize dotted and expanded IPv4-mapped IPv6 before checking ranges.
+  const normalized = new URL(`http://[${address}]/`).hostname.slice(1, -1);
+  const mapped = normalized.match(/^::ffff:([\da-f]{1,4}):([\da-f]{1,4})$/);
+  if (mapped) {
+    const high = Number.parseInt(mapped[1], 16);
+    const low = Number.parseInt(mapped[2], 16);
+    return isPrivateIp(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`);
+  }
+  return !/^[23][\da-f]{3}:/.test(normalized)
+    || normalized.startsWith('2001:db8:')
+    || normalized.startsWith('2001::')
+    || normalized.startsWith('2002:');
 }
 
 export async function normalizePublicUrl(input, {

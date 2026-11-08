@@ -160,7 +160,7 @@ export function extractHtmlMedia(html, pageUrl) {
   return items;
 }
 
-function collectProcess(child) {
+function collectProcess(child, timeoutMs = 45_000) {
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
@@ -169,8 +169,14 @@ function collectProcess(child) {
     const fail = (error) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
       reject(error);
     };
+    const timer = setTimeout(() => {
+      fail(new Error('视频解析超时，请检查网络后重试。'));
+      child.kill?.();
+    }, timeoutMs);
+    timer.unref?.();
 
     child.stdout?.on('data', (chunk) => {
       stdout += chunk;
@@ -186,6 +192,7 @@ function collectProcess(child) {
     child.on('close', (code) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
       if (code !== 0) {
         reject(new Error((stderr.trim() || `yt-dlp exited with code ${code}`).slice(-2_000)));
         return;
@@ -214,9 +221,13 @@ function normalizeEntry(entry, fallbackUrl, index) {
 export async function resolveWithYtDlp(url, {
   ytDlpPath,
   processFactory = spawn,
+  timeoutMs,
 } = {}) {
   if (!ytDlpPath) throw new Error('yt-dlp is not available.');
   const child = processFactory(ytDlpPath, [
+    '--ignore-config',
+    '--socket-timeout', '15',
+    '--retries', '1',
     '--dump-single-json',
     '--no-warnings',
     '--no-playlist',
@@ -224,7 +235,7 @@ export async function resolveWithYtDlp(url, {
     '--',
     url,
   ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const raw = await collectProcess(child);
+  const raw = await collectProcess(child, timeoutMs);
   let info;
   try {
     info = JSON.parse(raw);
