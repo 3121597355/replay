@@ -622,6 +622,24 @@ function LearnInner() {
     }
   }, [cueIndexAt]);
 
+  // 用 rAF 替代 timeupdate 驱动字幕高亮，消除最多 250ms 的更新延迟
+  useEffect(() => {
+    if (!playing) return;
+    let rafId: number;
+    const tick = () => {
+      const v = videoRef.current;
+      if (v && !v.paused && !v.ended) {
+        const idx = cueIndexAt(cuesRef.current, v.currentTime);
+        if (idx >= 0 && idx !== currentRef.current) {
+          setCurrent(idx);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [playing, cueIndexAt]);
+
   // 自动滚动到当前句（用户手动翻看时暂停）
   useEffect(() => {
     if (current < 0 || !followRef.current) return;
