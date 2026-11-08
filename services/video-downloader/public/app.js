@@ -1,3 +1,5 @@
+import { announceReplay, sendToReplay } from './replay.js';
+
 const resolveForm = document.querySelector('#resolveForm');
 const urlInput = document.querySelector('#urlInput');
 const resolveButton = document.querySelector('#resolveButton');
@@ -185,6 +187,8 @@ function updateTask(nodes, task) {
   nodes.taskError.textContent = task.error || '';
   nodes.actions.hidden = task.status !== 'completed' || !task.fileUrl;
   renderSubtitles(nodes.subtitleLinks, nodes.subtitleNote, task);
+  if (!nodes.replayButton) nodes.replayButton = addReplayButton(nodes.actions, () => nodes.task);
+  nodes.replayButton.hidden = task.status !== 'completed' || !task.fileUrl;
   updateProgress(nodes.progressTrack, nodes.progressValue, nodes.taskMetric, task);
   const pausable = ['queued', 'downloading', 'paused'].includes(task.status);
   nodes.taskToggle.hidden = !pausable;
@@ -205,6 +209,18 @@ function updateTask(nodes, task) {
     nodes.downloadButton.disabled = true;
     nodes.downloadButton.querySelector('span').textContent = task.status === 'paused' ? '已暂停' : task.status === 'processing' ? '分离字幕中' : '下载中';
   }
+}
+
+function addReplayButton(container, getTask) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button button-primary replay-import';
+  button.textContent = '导入 Replay 学习';
+  button.addEventListener('click', () => {
+    void sendToReplay(getTask(), button).catch(error => showStatus('error', '无法导入 Replay', error.message));
+  });
+  container.append(button);
+  return button;
 }
 
 async function toggleTask(nodes) {
@@ -361,6 +377,7 @@ function renderHistory(items) {
     download.hidden = !hasFileActions;
     folderButton.hidden = !hasFileActions;
     if (hasFileActions) {
+      addReplayButton(actions, () => task);
       download.href = task.fileUrl;
       download.setAttribute('download', task.filename || 'video.mp4');
       folderButton.addEventListener('click', () => openDownloads(folderButton));
@@ -578,4 +595,5 @@ async function checkHealth() {
   }
 }
 void checkHealth();
+announceReplay();
 window.setInterval(checkHealth, 30000);

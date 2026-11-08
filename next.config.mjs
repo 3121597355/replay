@@ -28,6 +28,12 @@ const nextConfig = {
           { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
         ],
       },
+      {
+        // Only the local-file receiver needs a cross-origin opener. The player
+        // gets its isolated document back after the full /learn navigation.
+        source: '/download',
+        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'unsafe-none' }],
+      },
     ];
   },
 };

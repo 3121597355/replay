@@ -9,7 +9,9 @@ import { isSoundCue } from '@/lib/lang';
 import { getWork } from '@/lib/data';
 import { exportAnkiCsv, exportSavedWords, exportSrtBlob } from '@/lib/anki';
 import { buildSrt, buildVtt, deriveName } from '@/lib/subtitle-export';
-import { pairEpisodes, type Episode } from '@/lib/pairing';
+import { episodeKey, guessLanguage, pairEpisodes, type Episode } from '@/lib/pairing';
+import { discardDownloadImport, readDownloadImport } from '@/lib/download-import';
+import { chooseDownloadSubtitle } from '@/lib/download-subtitles';
 import {
   pickAndScan,
   readHandle,
@@ -60,6 +62,8 @@ function LearnInner() {
   const [videoUrl, setVideoUrl] = useState<string>();
   const [videoFile, setVideoFile] = useState<File>();
   const [videoName, setVideoName] = useState<string>();
+  const [downloadImportError, setDownloadImportError] = useState<string>();
+  const importedDownloadRef = useRef<string>();
   const [loadingSample, setLoadingSample] = useState(false);
   const sampleRequestRef = useRef<AbortController | null>(null);
   const [sampleError, setSampleError] = useState<string>();
@@ -373,6 +377,44 @@ function LearnInner() {
     };
     reader.readAsText(file, 'utf-8');
   }
+
+  useEffect(() => {
+    const id = params.get('download');
+    if (!id || importedDownloadRef.current === id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const bundle = await readDownloadImport(id);
+        if (cancelled) return;
+        if (!bundle) throw new Error('这次导入已过期或已完成，请从下载器重新导入。');
+        const selection = await chooseDownloadSubtitle(bundle.video.name, bundle.subtitles);
+        if (cancelled) return;
+        importedDownloadRef.current = id;
+        const media = (file: File, kind: 'video' | 'subtitle') => ({
+          name: file.name, kind, size: file.size, handle: { getFile: async () => file },
+        });
+        const subtitles = selection.files.map(file => media(file, 'subtitle'));
+        const best = selection.selected ? subtitles.find(file => file.name === selection.selected?.file.name) : undefined;
+        await onVideoFile(bundle.video);
+        if (cancelled) return;
+        if (selection.selected) applySrt(selection.selected.text, selection.selected.file.name);
+        setEpisodes([{
+          key: episodeKey(bundle.video.name), label: bundle.video.name.replace(/\.mp4$/i, ''),
+          video: media(bundle.video, 'video'), subtitles, best,
+          bestLang: best ? guessLanguage(best.name) : undefined,
+        }]);
+        setDownloadImportError(undefined);
+        flash(selection.note);
+        await discardDownloadImport(id).catch(() => flash('文件已导入，浏览器暂未清理临时副本。'));
+        const url = new URL(window.location.href);
+        url.searchParams.delete('download');
+        window.history.replaceState(window.history.state, '', url);
+      } catch (error) {
+        if (!cancelled) setDownloadImportError(error instanceof Error ? error.message : '下载文件导入失败，请重新导入。');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [params, flash]);
 
   // ---------- 自动抽字幕 ----------
   async function handleExtract(fileArg?: File) {
@@ -920,6 +962,7 @@ function LearnInner() {
           </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            <a href="/download" className="btn btn-ghost !min-h-[44px] !px-2.5 !py-1.5 !text-[12.5px]">下载视频</a>
             {episodes && episodes.length > 0 && (
               <button
                 onClick={() => setShowPicker(true)}
@@ -1047,6 +1090,11 @@ function LearnInner() {
         </div>
       </div>
 
+      {downloadImportError && (
+        <div role="alert" className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
+          <span>{downloadImportError}</span><a href="/download" className="btn btn-ghost shrink-0">重新导入</a>
+        </div>
+      )}
       {(loadingSample || sampleError) && (
         <div role={sampleError ? 'alert' : 'status'} className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
           <span>{sampleError ?? '正在加载配套字幕，视频将边加载边播放…'}</span>

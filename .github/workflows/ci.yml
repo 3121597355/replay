@@ -56,3 +56,4 @@ jobs:
         run: |
           npx tsx scripts/test-pairing.ts
           npx tsx scripts/test-srt-export.ts
+          npx tsx scripts/test-download-import.ts

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import './globals.css';
 import Nav from '@/components/Nav';
 
@@ -49,8 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="text-[13px] text-[var(--text-faint)]">看剧学英语</span>
             </div>
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[var(--text-dim)]">
-              <Link href="/#catalog" className="hover:text-[var(--link)] hover:underline">浏览片单</Link>
-              <Link href="/learn" className="hover:text-[var(--link)] hover:underline">学习台</Link>
+              <a href="/#catalog" className="hover:text-[var(--link)] hover:underline">浏览片单</a>
+              <a href="/learn" className="hover:text-[var(--link)] hover:underline">学习台</a>
               <span className="text-[var(--text-faint)]">不提供片源与字幕</span>
             </div>
           </div>

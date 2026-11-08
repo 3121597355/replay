@@ -63,7 +63,7 @@ const pad2 = (s: string) => s.padStart(2, '0');
  * 不剥掉的话，同一集的视频和字幕会算出不同的键，永远配不上。
  */
 const VARIANT_SUFFIX =
-  /[.\-_ ](简体&英文|简英|中英双语|中英|双语|简体|繁体|简中|繁中|中文|英文|chs&eng|chs_eng|chs|cht|chi|eng|en|zh|sc|tc|cc|sdh|forced)$/i;
+  /[.\-_ ](简体&英文|简英|中英双语|中英|双语|简体|繁体|简中|繁中|中文|英文|chs&eng|chs_eng|zh-hans|zh-hant|en-us|en-orig|chs|cht|chi|zho|eng|und|en|zh|sc|tc|cc|sdh|forced)(?:\.\d{1,3})?$/i;
 
 /** 反复剥，防备 `xxx.chs.简体.srt` 这种叠了两层的 */
 function stripVariantSuffix(base: string): string {
@@ -121,7 +121,7 @@ export function episodeLabel(key: string, filename: string): string {
  */
 export function guessLanguage(filename: string): SubLanguage {
   const n = filename.toLowerCase();
-  const hasZh = /简体|简中|中文|chs|\.chi\b|\.sc\b|cht|繁体|繁中/.test(n);
+  const hasZh = /简体|简中|中文|chs|\.chi\b|\.zho\b|\.zh\b|\.sc\b|cht|繁体|繁中/.test(n);
   const hasEn = /英文|英语|eng|\.en\b|en-us|en_us/.test(n);
 
   if (/双语|中英|简英|简英双语|bilingual|chs&eng|chs_eng|zh-en/.test(n)) return 'bilingual';

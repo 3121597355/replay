@@ -8,11 +8,14 @@ const links = [
   { href: '/', label: '首页' },
   { href: '/#catalog', label: '片单' },
   { href: '/learn', label: '学习台' },
+  { href: '/download', label: '下载' },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
   const isLearn = pathname.startsWith('/learn');
+  const isDownload = pathname === '/download';
+  const HomeLink = isDownload ? 'a' : Link;
 
   return (
     <header
@@ -23,17 +26,17 @@ export default function Nav() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-[1120px] items-center px-3 sm:px-6">
-        <Link href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
+        <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 4.2A1.2 1.2 0 0 1 4.2 3h5.6A3.2 3.2 0 0 1 13 6.2v5.6A1.2 1.2 0 0 1 11.8 13H6.2A3.2 3.2 0 0 1 3 9.8V4.2Z" stroke="white" strokeWidth="1.4" />
               <path d="m6.6 6 3.4 2-3.4 2V6Z" fill="white" />
             </svg>
           </span>
-          <span className={`text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)]`}>
+          <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[380px]:block">
             Replay
           </span>
-        </Link>
+        </HomeLink>
 
         <nav className="flex h-16 items-stretch gap-0.5" aria-label="主导航">
           {links.map((link) => {
@@ -41,9 +44,11 @@ export default function Nav() {
               ? pathname === '/'
               : link.href === '/#catalog'
                 ? pathname.startsWith('/movie')
-                : pathname.startsWith('/learn');
+                : pathname.startsWith(link.href);
+            // Entering or leaving the receiver must load the document's COOP policy.
+            const NavLink = isDownload || link.href === '/download' ? 'a' : Link;
             return (
-              <Link
+              <NavLink
                 key={link.href}
                 href={link.href}
                 className={`relative flex shrink-0 items-center whitespace-nowrap px-1 text-[13px] transition-colors sm:px-3.5 sm:text-[14px] ${
@@ -56,7 +61,7 @@ export default function Nav() {
                 {active && (
                   <span className={`absolute inset-x-2.5 bottom-0 h-0.5 sm:inset-x-3.5 ${isLearn ? 'bg-[#e0a94a]' : 'bg-[#fd8c73]'}`} />
                 )}
-              </Link>
+              </NavLink>
             );
           })}
         </nav>
@@ -66,9 +71,9 @@ export default function Nav() {
           {isLearn ? (
             <span className="hidden text-[12px] text-[var(--text-faint)] sm:block">本地运行</span>
           ) : (
-            <Link href="/learn" className="btn btn-primary hidden !h-8 !px-3 !py-0 !text-[13px] sm:inline-flex">
+            <HomeLink href="/learn" className="btn btn-primary hidden !h-8 !px-3 !py-0 !text-[13px] sm:inline-flex">
               开始学习
-            </Link>
+            </HomeLink>
           )}
         </div>
       </div>
