@@ -423,6 +423,19 @@ video::-webkit-media-controls-panel {
   max-width: 100%;
 }
 
+/* In the side-by-side layout, let the player set the row height and fill it
+   with subtitles. The mobile 52dvh cap otherwise leaves a dead area beneath
+   the list in short or zoomed desktop windows. */
+@media (min-width: 1024px) {
+  .learn-subtitles {
+    contain: size;
+    min-height: 0;
+  }
+  .learn-cue-list {
+    max-height: none;
+  }
+}
+
 /* Zoom reduces both viewport dimensions. Only constrain the workspace when
    there is room for the header, wrapping toolbar and playback controls. */
 @media (min-width: 1100px) and (min-height: 760px) {
