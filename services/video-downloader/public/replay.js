@@ -1,21 +1,44 @@
-const DEFAULT_REPLAY = 'https://www.replayen.com';
-const ALLOWED_ORIGINS = new Set([
-  DEFAULT_REPLAY, 'https://replayen.com', 'https://replay-henna.vercel.app',
-  'http://localhost:4310', 'http://127.0.0.1:4310',
-  'http://localhost:4311', 'http://127.0.0.1:4311',
-]);
+import { DEFAULT_REPLAY, isReplayOrigin, isReplayToken, acceptsReplayMessage } from './replay-origins.js';
 const MAX_BYTES = 500 * 1024 * 1024;
 const params = new URLSearchParams(window.location.search);
 const pairedOrigin = params.get('replay');
 const pairedToken = params.get('token');
-const paired = ALLOWED_ORIGINS.has(pairedOrigin) && /^[a-f\d-]{32,64}$/i.test(pairedToken || '') && window.opener;
-const replayOrigin = ALLOWED_ORIGINS.has(pairedOrigin) ? pairedOrigin : DEFAULT_REPLAY;
+const trusted = isReplayOrigin(pairedOrigin) && isReplayToken(pairedToken);
+const embedded = trusted && params.get('embed') === '1' && window.parent !== window;
+const pairedWindow = trusted ? (embedded ? window.parent : window.opener) : null;
+const paired = !!pairedWindow;
+const replayOrigin = isReplayOrigin(pairedOrigin) ? pairedOrigin : DEFAULT_REPLAY;
 let sending = false;
 
 export function announceReplay() {
   const returnLink = document.querySelector('#returnReplayLink');
   if (returnLink) returnLink.href = `${replayOrigin}/learn`;
-  if (paired) window.opener.postMessage({ type: 'replay:ready', token: pairedToken }, pairedOrigin);
+  const announce = () => pairedWindow?.postMessage({ type: 'replay:ready', token: pairedToken }, pairedOrigin);
+  if (embedded) {
+    document.documentElement.dataset.embedded = 'true';
+    const folder = document.querySelector('#openFolderButton');
+    const clear = document.querySelector('#clearHistoryButton');
+    if (folder && clear) {
+      const tools = document.createElement('div');
+      tools.className = 'embedded-history-tools';
+      clear.before(tools);
+      tools.append(folder, clear);
+    }
+    const resize = () => pairedWindow.postMessage({ type: 'replay:height', token: pairedToken,
+      height: Math.ceil(document.body.scrollHeight) }, pairedOrigin);
+    new ResizeObserver(resize).observe(document.body);
+    window.addEventListener('message', event => {
+      if (!acceptsReplayMessage(event, pairedWindow, pairedOrigin, pairedToken)) return;
+      if (event.data.type === 'replay:theme' && ['light', 'dark'].includes(event.data.theme)) {
+        document.documentElement.dataset.theme = event.data.theme;
+      }
+      if (event.data.type === 'replay:connect') { announce(); resize(); }
+    });
+    const initialTheme = params.get('theme');
+    if (['light', 'dark'].includes(initialTheme)) document.documentElement.dataset.theme = initialTheme;
+    resize();
+  }
+  announce();
 }
 
 async function readLocalFile(url, name, type, signal) {
@@ -37,7 +60,7 @@ export async function sendToReplay(task, button) {
   const targetOrigin = paired ? pairedOrigin : DEFAULT_REPLAY;
   const token = paired ? pairedToken : crypto.randomUUID();
   const controller = new AbortController();
-  let target = paired ? window.opener : null;
+  let target = pairedWindow;
   let bundle, ready = !!paired, sent = false, timer;
   try {
     await new Promise((resolve, reject) => {

@@ -8,6 +8,7 @@ import { createDownloadManager } from './lib/download.mjs';
 import { findBrowserExecutable, resolveWithBrowser } from './lib/browser-resolve.mjs';
 import { resolveMedia } from './lib/resolve.mjs';
 import { resolveDownloadPath } from './lib/security.mjs';
+import { isReplayOrigin, isReplayToken } from './public/replay-origins.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PUBLIC_DIR = path.join(ROOT, 'public');
@@ -136,8 +137,8 @@ function defaultOpenDownloads(downloadsDir) {
   });
 }
 
-function serveStatic(response, publicDir, pathname) {
-  let relative = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1));
+function serveStatic(response, publicDir, pathname, headers = {}) {
+  let relative = ['/', '/embedded'].includes(pathname) ? 'index.html' : decodeURIComponent(pathname.slice(1));
   if (!relative || relative.includes('\0')) relative = 'index.html';
   const root = path.resolve(publicDir);
   const filename = path.resolve(root, relative);
@@ -155,6 +156,8 @@ function serveStatic(response, publicDir, pathname) {
       'content-type': CONTENT_TYPES[path.extname(filename).toLowerCase()] || 'application/octet-stream',
       'content-length': stat.size,
       'cache-control': 'no-cache',
+      'content-security-policy': "frame-ancestors 'none'",
+      ...headers,
     });
     fs.createReadStream(filename).pipe(response);
   });
@@ -208,7 +211,7 @@ export function createServer({
 
     try {
       if (request.method === 'GET' && pathname === '/api/health') {
-        sendJson(response, 200, { ok: true, dependencies, features: ['srt-separation'] });
+        sendJson(response, 200, { ok: true, dependencies, features: ['srt-separation', 'replay-embedded'] });
         return;
       }
 
@@ -398,6 +401,19 @@ export function createServer({
 
       if (pathname.startsWith('/api/')) {
         sendError(response, 404, 'NOT_FOUND', '未找到该接口。');
+        return;
+      }
+      if (pathname === '/embedded' || (pathname === '/index.html' && requestUrl.searchParams.get('embed') === '1')) {
+        const replayOrigin = requestUrl.searchParams.get('replay');
+        if (!isReplayOrigin(replayOrigin) || !isReplayToken(requestUrl.searchParams.get('token'))) {
+          sendError(response, 403, 'REPLAY_FORBIDDEN', '请从 Replay 下载页连接。');
+          return;
+        }
+        serveStatic(response, publicDir, pathname, {
+          'cross-origin-embedder-policy': 'credentialless',
+          'cross-origin-resource-policy': 'cross-origin',
+          'content-security-policy': `frame-ancestors ${replayOrigin}`,
+        });
         return;
       }
       serveStatic(response, publicDir, pathname);

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
 
 import { configureNetworkProxy, createServer, loopbackNoProxy } from '../server.mjs';
 
@@ -93,6 +94,26 @@ async function json(response) {
   return { status: response.status, body: await response.json() };
 }
 
+test('embeds only for a pinned Replay origin and keeps loopback APIs protected', async () => {
+  await withServer({ publicDir: fileURLToPath(new URL('../public/', import.meta.url)) }, async ({ baseUrl }) => {
+    const token = '12345678-1234-1234-1234-123456789abc';
+    const origin = 'https://www.replayen.com';
+    const embedded = await fetch(`${baseUrl}/index.html?replay=${encodeURIComponent(origin)}&token=${token}&embed=1`);
+    assert.equal(embedded.status, 200);
+    assert.equal(embedded.headers.get('cross-origin-embedder-policy'), 'credentialless');
+    assert.equal(embedded.headers.get('cross-origin-resource-policy'), 'cross-origin');
+    assert.equal(embedded.headers.get('content-security-policy'), `frame-ancestors ${origin}`);
+    assert.match(await embedded.text(), /id="resolveForm"/);
+    const rejected = await fetch(`${baseUrl}/embedded?replay=https://attacker.example&token=${token}`);
+    assert.equal(rejected.status, 403);
+    assert.equal((await fetch(`${baseUrl}/embedded?replay=${encodeURIComponent(origin)}`)).status, 403);
+    const standalone = await fetch(baseUrl);
+    assert.equal(standalone.headers.get('content-security-policy'), "frame-ancestors 'none'");
+    const api = await fetch(`${baseUrl}/api/downloads`, { headers: { origin } });
+    assert.equal(api.status, 403);
+  });
+});
+
 test('rejects hostile Host and Origin headers before invoking local actions', async () => {
   await withServer({}, async ({ baseUrl, calls }) => {
     const hostStatus = await new Promise((resolve, reject) => {
@@ -138,7 +159,7 @@ test('reports health and dependency availability', async () => {
   await withServer({}, async ({ baseUrl }) => {
     const response = await json(await fetch(`${baseUrl}/api/health`));
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, dependencies: { ytDlp: true, ffmpeg: true }, features: ['srt-separation'] });
+    assert.deepEqual(response.body, { ok: true, dependencies: { ytDlp: true, ffmpeg: true }, features: ['srt-separation', 'replay-embedded'] });
   });
 });
 
