@@ -351,6 +351,10 @@ video::-webkit-media-controls-panel {
 }
 .modal-panel {
   animation: modalIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .drawer-panel {
   animation: drawerIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
