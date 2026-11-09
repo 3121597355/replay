@@ -351,6 +351,10 @@ video::-webkit-media-controls-panel {
 }
 .modal-panel {
   animation: modalIn 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .drawer-panel {
   animation: drawerIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -377,9 +381,57 @@ video::-webkit-media-controls-panel {
   to { transform: translateX(0); opacity: 1; }
 }
 
-@media (min-width: 1024px) {
+.learn-workspace {
+  min-height: calc(100vh - 65px);
+  min-height: calc(100dvh - 65px);
+}
+.learn-stage-video {
+  aspect-ratio: 16 / 9;
+}
+.learn-empty > * {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+/* Zoom reduces both viewport dimensions. Only constrain the workspace when
+   there is room for the header, wrapping toolbar and playback controls. */
+@media (min-width: 1100px) and (min-height: 760px) {
   body:has([data-page='learn']) {
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
     overflow: hidden;
+  }
+  body:has([data-page='learn']) > main {
+    min-height: 0;
+    flex: 1;
+  }
+  .learn-workspace {
+    height: 100%;
+    min-height: 0;
+  }
+  .learn-columns,
+  .learn-player,
+  .learn-subtitles {
+    min-height: 0;
+  }
+  .learn-stage {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+  .learn-stage-video {
+    aspect-ratio: auto;
+  }
+  .learn-empty {
+    height: 100%;
+    justify-content: safe center;
+    overflow-y: auto;
+  }
+  .learn-cue-list {
+    max-height: none;
   }
 }
 body:has([data-page='learn']) footer {
