@@ -23,11 +23,11 @@ function Get-VerifiedFile($entry, [string]$name) {
     if ($entry.sha256 -notmatch '^[a-f0-9]{64}$' -or !([uri]$entry.url).IsAbsoluteUri -or ([uri]$entry.url).Scheme -ne 'https') { throw 'Dependency must have an HTTPS source and SHA-256.' }
     $target = Join-Path $cache $name
     if (!(Test-Path -LiteralPath $target)) {
-        Write-Output "Downloading $name from its pinned source"
+        Write-Host "Downloading $name from its pinned source"
         Invoke-WebRequest -Uri $entry.url -OutFile $target -TimeoutSec 300
     }
     if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.sha256) { throw "Checksum failed for $name. No unverified dependency will be packaged." }
-    Write-Output "Verified $name"
+    Write-Host "Verified $name"
     return $target
 }
 
@@ -47,6 +47,8 @@ $nodeZip = @(Get-VerifiedFile $manifest.node 'node.zip')[-1]
 $ffmpegZip = @(Get-VerifiedFile $manifest.ffmpeg 'ffmpeg.zip')[-1]
 $ytExe = @(Get-VerifiedFile $manifest.ytDlp 'yt-dlp.exe')[-1]
 $ytLicense = @(Get-VerifiedFile $manifest.ytDlpLicense 'yt-dlp-LICENSE.txt')[-1]
+$ytThirdPartyLicenses = @(Get-VerifiedFile $manifest.ytDlpThirdPartyLicenses 'yt-dlp-THIRD-PARTY-LICENSES.txt')[-1]
+$ytReadme = @(Get-VerifiedFile $manifest.ytDlpReadme 'yt-dlp-README.md')[-1]
 $nodeUnpacked = Join-Path $buildDirectory 'node-unpacked'
 $ffmpegUnpacked = Join-Path $buildDirectory 'ffmpeg-unpacked'
 Expand-Archive -LiteralPath $nodeZip -DestinationPath $nodeUnpacked
@@ -65,6 +67,8 @@ foreach ($notice in @(Get-ChildItem -LiteralPath $ffmpegHome -File | Where-Objec
 }
 Copy-Item -LiteralPath $ytExe -Destination $tools
 Copy-Item -LiteralPath $ytLicense -Destination (Join-Path $licenses 'yt-dlp-LICENSE.txt')
+Copy-Item -LiteralPath $ytThirdPartyLicenses -Destination (Join-Path $licenses 'yt-dlp-THIRD-PARTY-LICENSES.txt')
+Copy-Item -LiteralPath $ytReadme -Destination (Join-Path $licenses 'yt-dlp-README.md')
 
 # Running these CLI checks is part of verifying the downloaded component.
 $nodeVersion = (& (Join-Path $tools 'node.exe') --version | Out-String).Trim()
@@ -75,8 +79,6 @@ if ($LASTEXITCODE -ne 0 -or $ffmpegVersion -notmatch ([regex]::Escape($manifest.
 if ($LASTEXITCODE -ne 0) { throw 'Bundled FFprobe check failed.' }
 $ytVersion = (& (Join-Path $tools 'yt-dlp.exe') --version | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $ytVersion -ne $manifest.ytDlp.version) { throw 'Bundled yt-dlp version check failed.' }
-& (Join-Path $tools 'yt-dlp.exe') --print-licenses | Set-Content -LiteralPath (Join-Path $licenses 'yt-dlp-THIRD-PARTY-LICENSES.txt') -Encoding utf8
-if ($LASTEXITCODE -ne 0) { throw 'Cannot collect bundled yt-dlp dependency licenses.' }
 $sourceCommit = (git -C $repoRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify component source commit.' }
 [ordered]@{

@@ -10,7 +10,7 @@
     "version": "9.0.2",
     "url": "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
     "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
-    "source": "https://www.gyan.dev/ffmpeg/builds/"
+    "source": "https://github.com/FFmpeg/FFmpeg/commit/946fcce07b"
   },
   "ytDlp": {
     "version": "2026.10.26",
@@ -21,5 +21,13 @@
   "ytDlpLicense": {
     "url": "https://raw.githubusercontent.com/yt-dlp/yt-dlp/2026.10.26/LICENSE",
     "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+  },
+  "ytDlpThirdPartyLicenses": {
+    "url": "https://raw.githubusercontent.com/yt-dlp/yt-dlp/2026.10.26/THIRD_PARTY_LICENSES.txt",
+    "sha256": "472aefe951c7db35e1657c1d13fd337140511ed6f2b329205105ad441c5a02b7"
+  },
+  "ytDlpReadme": {
+    "url": "https://raw.githubusercontent.com/yt-dlp/yt-dlp/2026.10.26/README.md",
+    "sha256": "6adba80a892aee34940550ee8d7085041afca6140b7ac56d6414f1e6eb484bfe"
   }
 }
