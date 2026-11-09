@@ -33,7 +33,7 @@ export default function Nav() {
               <path d="m6.6 6 3.4 2-3.4 2V6Z" fill="white" />
             </svg>
           </span>
-          <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[380px]:block">
+          <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[480px]:block">
             Replay
           </span>
         </HomeLink>
@@ -66,7 +66,20 @@ export default function Nav() {
           })}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 pl-1 sm:pl-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1 pl-1 sm:gap-2 sm:pl-0">
+          <a
+            href="https://github.com/3121597355/replay"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Star on GitHub，查看 Replay 开源仓库"
+            title="Star on GitHub · Replay 开源仓库"
+            className="inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] sm:h-9 lg:px-3"
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 .297C5.37.297 0 5.67 0 12.297c0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.043-1.61-4.043-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.838 1.237 1.838 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.3-5.466-1.334-5.466-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.005.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.805 5.628-5.478 5.925.43.372.823 1.102.823 2.222 0 1.606-.015 2.898-.015 3.293 0 .319.216.694.825.576C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+            </svg>
+            <span className="hidden whitespace-nowrap text-[13px] font-medium lg:inline">Star on GitHub</span>
+          </a>
           <ThemeToggle />
           {isLearn ? (
             <span className="hidden text-[12px] text-[var(--text-faint)] sm:block">本地运行</span>

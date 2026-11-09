@@ -34,7 +34,7 @@ export default function ThemeToggle() {
       aria-label={isDark ? '切换到浅色模式' : '切换到深色模式'}
       title={isDark ? '当前深色，点击切换浅色' : '当前浅色，点击切换深色'}
       aria-pressed={isDark}
-      className="inline-flex h-11 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors duration-200 hover:bg-[var(--surface-3)] active:bg-[var(--surface-3)] sm:h-9 sm:px-2.5"
+      className="inline-flex h-11 min-w-[44px] shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors duration-200 hover:bg-[var(--surface-3)] active:bg-[var(--surface-3)] sm:h-9 sm:px-2.5"
     >
       <svg
         width="16"
@@ -64,7 +64,7 @@ export default function ThemeToggle() {
           </>
         )}
       </svg>
-      <span className="whitespace-nowrap text-[12px] font-semibold" aria-hidden="true">{isDark ? '深色' : '浅色'}</span>
+      <span className="hidden whitespace-nowrap text-[12px] font-semibold min-[360px]:inline" aria-hidden="true">{isDark ? '深色' : '浅色'}</span>
       <span className="sr-only" role="status">{mounted ? `当前为${isDark ? '深色' : '浅色'}模式` : ''}</span>
     </button>
   );
