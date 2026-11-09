@@ -46,7 +46,7 @@ import WordCard, { type LookupState } from '@/components/WordCard';
 import { lookup, loadDict, tokenize } from '@/lib/dict';
 import sample from '@/public/sample/manchester-repair-v2.json';
 import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
-import { fetchTextWithTimeout, watchMediaQuery } from '@/lib/browser';
+import { fetchTextWithTimeout } from '@/lib/browser';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -89,26 +89,6 @@ function LearnInner() {
   // 弹层要等挂到客户端才能 portal 到 body
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  /**
-   * 把页面本身锁死，滚动只允许发生在内部两栏。
-   *
-   * globals.css 里已经用 body:has([data-page='learn']) 拦了一道，
-   * 这里再用 inline style 兜一次——不依赖 :has() 的选择器支持，
-   * 也不怕以后谁把 data-page 属性改掉。桌面端才锁，小屏要能整页滚。
-   */
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const apply = () => {
-      document.body.style.overflow = mq.matches ? 'hidden' : '';
-    };
-    apply();
-    const unwatch = watchMediaQuery(mq, apply);
-    return () => {
-      unwatch();
-      document.body.style.overflow = '';
-    };
-  }, []);
 
   /**
    * 是否让字幕列表跟着播放走。
@@ -937,14 +917,14 @@ function LearnInner() {
     <div
       data-page="learn"
       data-sub-hash={subHash ?? ''}
-      className="flex min-h-[calc(100vh-68px)] flex-col bg-[var(--learn-bg)] text-[var(--text)] lg:h-[calc(100vh-68px)] lg:overflow-hidden"
+      className="learn-workspace flex min-w-0 flex-col bg-[var(--learn-bg)] text-[var(--text)]"
     >
       {/* ============ 顶部工具栏 ============ */}
       <div className="shrink-0 border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-4 py-2.5">
-          <div className="mr-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="title-serif truncate text-[15px] font-semibold text-[var(--text)]">
+        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
+          <div className="mr-1 min-w-0 max-w-full flex-[1_1_160px]">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="title-serif min-w-0 truncate text-[15px] font-semibold text-[var(--text)]">
                 {title}
               </h1>
               {cues.length > 0 && (
@@ -961,7 +941,7 @@ function LearnInner() {
             </div>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
             <a href="/download" className="btn btn-ghost !min-h-[44px] !px-2.5 !py-1.5 !text-[12.5px]">下载视频</a>
             {episodes && episodes.length > 0 && (
               <button
@@ -1110,8 +1090,8 @@ function LearnInner() {
       {/* ============ 抽取进度 ============ */}
       {extractState && (
         <div className="border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] px-4 py-2 backdrop-blur">
-          <div className="mx-auto flex max-w-[1600px] items-center gap-3">
-            <span className="shrink-0 text-[11.5px] text-[var(--text-dim)]">
+          <div className="mx-auto flex min-w-0 max-w-[1600px] flex-wrap items-center gap-3">
+            <span className="min-w-0 text-[11.5px] text-[var(--text-dim)]">
               {extractState.stage === 'scanning' && '读取容器…'}
               {extractState.stage === 'loading' &&
                 (extractState.pct >= 100
@@ -1150,10 +1130,10 @@ function LearnInner() {
       )}
 
       {/* ============ 主体 ============ */}
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col overflow-hidden lg:min-h-0 lg:flex-row">
+      <div className="learn-columns mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col lg:flex-row">
         {/* 左：播放器 */}
-        <div className="flex min-w-0 flex-1 flex-col border-b border-[rgb(var(--fg-rgb)/0.06)] lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-r">
-          <div className="relative flex min-h-[240px] flex-1 items-center justify-center bg-[var(--stage)] p-3">
+        <div className="learn-player flex min-w-0 flex-1 flex-col border-b border-[rgb(var(--fg-rgb)/0.06)] lg:border-b-0 lg:border-r">
+          <div className={`learn-stage relative flex min-w-0 items-center justify-center bg-[var(--stage)] p-3 ${videoUrl ? 'learn-stage-video' : ''}`}>
             {videoUrl ? (
               <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-black shadow-card">
                 <video
@@ -1259,7 +1239,7 @@ function LearnInner() {
           )}
 
           {/* 控制条 */}
-          <div className="border-t border-[rgb(var(--fg-rgb)/0.06)] px-3 py-2.5">
+          <div className="learn-controls min-w-0 shrink-0 border-t border-[rgb(var(--fg-rgb)/0.06)] px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <Ctrl onClick={() => go(-1)} disabled={!videoUrl || cues.length === 0} title="上一句 (↑)">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -1309,7 +1289,7 @@ function LearnInner() {
                 单句循环
               </button>
 
-              <div className="flex items-center gap-0.5 rounded-lg border border-[rgb(var(--fg-rgb)/0.10)] p-0.5">
+              <div className="flex max-w-full flex-wrap items-center gap-0.5 rounded-lg border border-[rgb(var(--fg-rgb)/0.10)] p-0.5">
                 {RATES.map((r) => (
                   <button
                     key={r}
@@ -1336,13 +1316,13 @@ function LearnInner() {
                 译文
               </button>
 
-              <div className="ml-auto flex items-center gap-3 text-[11px] text-[var(--text-faint)] tnum">
+              <div className="ml-auto flex min-w-0 flex-wrap items-center gap-3 text-[11px] text-[var(--text-faint)] tnum">
                 {current >= 0 && cues[current] && (
                   <span className="hidden sm:inline">
                     {formatTime(cues[current].start)} – {formatTime(cues[current].end)}
                   </span>
                 )}
-                <span className="hidden md:inline">
+                <span className="hidden xl:inline">
                   空格 播放 · ↑↓ 切换 · R 重播 · L 循环
                 </span>
               </div>
@@ -1351,8 +1331,8 @@ function LearnInner() {
         </div>
 
         {/* 右：字幕列表 */}
-        <aside className="flex w-full shrink-0 flex-col lg:w-[460px] lg:min-h-0 lg:overflow-hidden xl:w-[520px]">
-          <div className="flex items-center justify-between border-b border-[rgb(var(--fg-rgb)/0.06)] px-4 py-2.5">
+        <aside className="learn-subtitles flex w-full min-w-0 shrink-0 flex-col lg:w-[40%] lg:max-w-[520px]">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-[rgb(var(--fg-rgb)/0.06)] px-4 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-[11px] tracking-[0.18em] text-[var(--text-faint)]">字幕</span>
               {translatedCount > 0 ? (
@@ -1366,7 +1346,7 @@ function LearnInner() {
               ) : null}
             </div>
 
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               {!follow && current >= 0 && (
                 <button
                   onClick={resumeFollow}
@@ -1401,7 +1381,7 @@ function LearnInner() {
             onTouchMove={() => {
               if (followRef.current) setFollow(false);
             }}
-            className="max-h-[52vh] flex-1 overflow-y-auto overscroll-contain lg:max-h-none lg:min-h-0"
+            className="learn-cue-list min-h-0 max-h-[52dvh] flex-1 overflow-y-auto overscroll-contain"
           >
             {cues.length === 0 ? (
               <EmptyCues />
@@ -1428,7 +1408,7 @@ function LearnInner() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`text-[13.5px] leading-[1.65] ${
+                          className={`break-words text-[13.5px] leading-[1.65] ${
                             i === current ? 'text-[var(--text)]' : 'text-[var(--text-soft)]'
                           }`}
                         >
@@ -2175,7 +2155,7 @@ function EmptyVideo({
   workTitle?: string;
 }) {
   return (
-    <div className="flex h-full min-h-[520px] w-full flex-col items-center justify-center gap-6 rounded-2xl border border-[rgb(var(--fg-rgb)/0.06)] bg-gradient-to-b from-[rgb(var(--fg-rgb)/0.03)] via-transparent to-transparent p-8 text-center">
+    <div className="learn-empty flex w-full min-w-0 flex-col items-center justify-center gap-4 rounded-2xl border border-[rgb(var(--fg-rgb)/0.06)] bg-gradient-to-b from-[rgb(var(--fg-rgb)/0.03)] via-transparent to-transparent p-4 text-center sm:gap-6 sm:p-6">
       <div className="relative">
         <div className="absolute inset-0 rounded-2xl bg-gold-500/10 blur-2xl" />
         <div className="relative grid h-14 w-14 place-items-center rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.04)]">

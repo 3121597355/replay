@@ -19,13 +19,13 @@ export default function Nav() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b ${
+      className={`sticky top-0 z-50 shrink-0 border-b ${
         isLearn
           ? 'border-[rgb(var(--fg-rgb)/0.08)] bg-[var(--learn-bar)] backdrop-blur-md'
           : 'border-[var(--line)] bg-[rgb(var(--bg-rgb)/0.95)] backdrop-blur-md'
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-[1120px] items-center px-3 sm:px-6">
+      <div className="mx-auto flex min-h-16 w-full min-w-0 max-w-[1120px] flex-wrap items-center gap-y-1 px-3 sm:px-6">
         <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -38,7 +38,7 @@ export default function Nav() {
           </span>
         </HomeLink>
 
-        <nav className="flex h-16 items-stretch gap-0.5" aria-label="主导航">
+        <nav className="flex h-16 shrink-0 items-stretch gap-0.5" aria-label="主导航">
           {links.map((link) => {
             const active = link.href === '/'
               ? pathname === '/'
