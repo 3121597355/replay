@@ -40,6 +40,7 @@ svg { display: block; width: 20px; height: 20px; flex-shrink: 0; }
 .brand-mark { display: grid; width: 41px; height: 41px; place-items: center; background: var(--accent); color: white; border-radius: 13px; box-shadow: 0 4px 9px #176b4514; }
 .brand-mark svg { width: 29px; height: 29px; }
 .header-tools { display: flex; align-items: center; gap: 24px; margin-left: auto; }
+.button.replay-return { white-space: nowrap; color: var(--accent); }
 .service-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .service-status i { width: 6px; height: 6px; background: #a8b2ac; border-radius: 50%; }
 .service-status[data-state="ready"] i { background: #3c9862; box-shadow: 0 0 0 4px #3c98620c; }
@@ -169,12 +170,14 @@ input::placeholder { color: #8a968e; }
   .service-status { font-size: 12px; }
 }
 @media (max-width: 640px) {
-  html { scroll-padding-top: 82px; }
-  .header-inner { width: calc(100% - 32px); min-height: 70px; gap: 16px; }
+  html { scroll-padding-top: 140px; }
+  .header-inner { width: calc(100% - 32px); min-height: 70px; flex-wrap: wrap; gap: 10px 16px; padding: 12px 0; }
+  .header-tools { width: 100%; justify-content: space-between; gap: 10px; margin-left: 0; }
+  .replay-return { min-height: 44px; }
   .brand { font-size: 15px; gap: 9px; }
   .brand-mark { width: 35px; height: 35px; border-radius: 11px; }
   .brand-mark svg { width: 25px; height: 25px; }
-  .header-action { width: 38px; min-height: 38px; padding: 0; }
+  .header-action { width: 44px; min-height: 44px; padding: 0; }
   .header-action .button-label { display: none; }
   .service-status span { display: none; }
   .app-main { width: calc(100% - 32px); padding-top: 22px; }

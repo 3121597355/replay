@@ -9,9 +9,12 @@ const params = new URLSearchParams(window.location.search);
 const pairedOrigin = params.get('replay');
 const pairedToken = params.get('token');
 const paired = ALLOWED_ORIGINS.has(pairedOrigin) && /^[a-f\d-]{32,64}$/i.test(pairedToken || '') && window.opener;
+const replayOrigin = ALLOWED_ORIGINS.has(pairedOrigin) ? pairedOrigin : DEFAULT_REPLAY;
 let sending = false;
 
 export function announceReplay() {
+  const returnLink = document.querySelector('#returnReplayLink');
+  if (returnLink) returnLink.href = `${replayOrigin}/learn`;
   if (paired) window.opener.postMessage({ type: 'replay:ready', token: pairedToken }, pairedOrigin);
 }
 
