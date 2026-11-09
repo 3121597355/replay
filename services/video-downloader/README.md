@@ -1,5 +1,19 @@
 # 下载器检查版本
 
+## 第一次使用
+
+普通用户可直接下载 [Replay Windows 下载组件](https://github.com/3121597355/replay/releases/download/downloader-v0.2.0/Replay-Download-Component-v0.2.0-windows-x64.zip)，无需另外安装 Node.js、FFmpeg 或 yt-dlp。
+
+1. 下载 ZIP 并解压全部文件到一个固定文件夹。
+2. 双击「启动 Replay 下载组件.bat」。组件在后台运行，并打开 [Replay 下载页](https://www.replayen.com/download)。
+3. 网站自动连接组件，在网页内粘贴链接、下载并分离字幕，再导入学习台。已打开的下载页会自动重试连接。
+
+组件只需下载一次；电脑重启后重新双击启动即可。Windows 10 / 11 64 位，推荐最新版 Chrome / Edge。下载后需要主动启动，网站不会自动执行下载的程序。已有 MP4/SRT 可以直接在网站导入，不需要组件；手机支持导入已有文件。
+
+视频、字幕、历史记录和日志在解压目录的本机文件夹内，不上传到 Replay 服务器。使用网站中另外配置的翻译接口属于独立功能，翻译请求发往你配置的接口。
+
+组件源码及可重复构建脚本均在本仓库，第三方工具的来源与校验值见 `scripts/component-dependencies.json`。macOS / Linux 可按下面的源码运行说明配置依赖；本次便携组件仅提供 Windows 64 位版本。
+
 源工具位于 `K:\work\MangaShelf\video-downloader`。本目录只复制源码、静态页面和测试；浏览器配置、Cookie、下载历史、下载文件和二进制未复制。
 
 ## 当前运行范围
@@ -12,7 +26,15 @@ $env:FFMPEG_PATH = '你的 ffmpeg 路径'
 node server.mjs
 ```
 
-可配置 `PORT`、`DOWNLOADS_DIR`、`HISTORY_FILE`、`FFPROBE_PATH`，字幕版默认端口 45211，避开原工具的 45210。当前 API 拒绝非回环 Host 和跨站 Origin。Windows 可通过 `start.bat` 启动，服务隐藏运行并打开工具页面。
+可配置 `PORT`、`DOWNLOADS_DIR`、`HISTORY_FILE`、`FFPROBE_PATH`，字幕版默认端口 45211，避开原工具的 45210。当前 API 拒绝非回环 Host 和跨站 Origin。Windows 可通过 `start.bat` 或「启动 Replay 下载组件.bat」启动，服务隐藏运行并打开 Replay 下载页。便携组件优先使用 `tools/` 中的运行环境；设置依赖路径环境变量仍可覆盖。测试时可运行 `launch.ps1 -NoOpen`，不打开浏览器。
+
+构建便携包（PowerShell）：
+
+```powershell
+.\scripts\build-component.ps1 -OutputDirectory 'D:\组件输出' -BuildRoot 'D:\组件构建'
+```
+
+构建脚本从固定官方来源获取工具并校验 SHA-256，只复制明确列出的源码文件，不打包电脑上的下载文件、历史、Cookie 或浏览器配置。第三方许可证、源码入口与工具校验值随包提供。
 
 ## 视频与字幕分别保存
 
