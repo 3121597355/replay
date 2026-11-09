@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Catalog from '@/components/Catalog';
 import Poster from '@/components/Poster';
+import HomeMotion from '@/components/HomeMotion';
 import { getWork, works } from '@/lib/data';
 import { difficultyLabel } from '@/lib/types';
 
@@ -11,16 +12,16 @@ const featured = featuredSlugs
 
 export default function HomePage() {
   return (
-    <div>
+    <HomeMotion>
       <section className="mx-auto max-w-[1120px] px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
-        <div className="mx-auto max-w-[760px] text-center">
-          <h1 className="text-balance animate-fade-up text-[44px] font-bold leading-[1.08] tracking-[-0.045em] text-[var(--text)] sm:text-[60px]">
+        <div className="home-hero mx-auto max-w-[760px] text-center">
+          <h1 className="home-intro text-balance text-[44px] font-bold leading-[1.08] tracking-[-0.045em] text-[var(--text)] sm:text-[60px]">
             看剧，学英语。
           </h1>
-          <p className="mx-auto mt-5 max-w-[620px] animate-fade-up text-[16px] leading-[1.7] text-[var(--text-dim)] [animation-delay:60ms] sm:text-[18px]">
+          <p className="home-intro mx-auto mt-5 max-w-[620px] text-[16px] leading-[1.7] text-[var(--text-dim)] [animation-delay:60ms] sm:text-[18px]">
             导入自己的视频和字幕，逐句精听、查词和收藏，最后导出到 Anki。
           </p>
-          <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3 [animation-delay:120ms]">
+          <div className="home-intro mt-8 flex flex-wrap items-center justify-center gap-3 [animation-delay:120ms]">
             <Link href="/learn" className="btn btn-primary !px-5">
               开始学习
             </Link>
@@ -49,8 +50,8 @@ export default function HomePage() {
               text: '收藏的表达可以生成卡片，也可以导出双语字幕继续复习。',
               icon: 'M3 3h14v11H3V3Zm3.5 14h7M10 14v3M6.5 7h7M6.5 10h4.5',
             },
-          ].map((item) => (
-            <div key={item.title} className="group">
+          ].map((item, index) => (
+            <div key={item.title} className="group" data-reveal data-reveal-delay={index * 100}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--accent)] transition-transform duration-300 ease-out group-hover:-translate-y-0.5" aria-hidden="true">
                 <path d={item.icon} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -63,11 +64,11 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6 sm:py-20" aria-labelledby="featured-title">
         <div className="flex items-end justify-between gap-6">
-          <div>
+          <div data-reveal>
             <h2 id="featured-title" className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]">推荐作品</h2>
             <p className="mt-2 text-[14px] text-[var(--text-dim)]">从日常对话到史诗剧集，按自己的水平选择。</p>
           </div>
-          <a href="#catalog" className="group inline-flex shrink-0 items-center gap-1 text-[14px] font-medium text-[var(--link)] hover:underline">
+          <a href="#catalog" data-reveal data-reveal-delay="60" className="group inline-flex shrink-0 items-center gap-1 text-[14px] font-medium text-[var(--link)] hover:underline">
             查看全部 {works.length} 部
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -80,8 +81,9 @@ export default function HomePage() {
             <Link
               key={work.slug}
               href={`/movie/${work.slug}`}
-              className="group animate-fade-up"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="group min-w-0"
+              data-reveal
+              data-reveal-delay={index * 120}
             >
               <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] transition-[transform,border-color,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-[var(--line-strong)] group-hover:shadow-[0_18px_36px_-26px_rgba(31,35,40,0.55)]">
                 <div className="aspect-[2/3] w-full">
@@ -100,7 +102,7 @@ export default function HomePage() {
 
       <section id="catalog" className="border-t border-[var(--line)]">
         <div className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6 sm:py-20">
-          <div className="mb-8 max-w-[720px]">
+          <div className="mb-8 max-w-[720px]" data-reveal>
             <h2 className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]">浏览片单</h2>
             <p className="mt-2 text-[14px] leading-[1.7] text-[var(--text-dim)]">
               按难度、类型或关键词筛选。片源与字幕请使用你合法拥有的副本。
@@ -111,13 +113,13 @@ export default function HomePage() {
       </section>
 
       <div className="border-t border-[var(--line)]">
-        <div className="mx-auto flex max-w-[1120px] items-center gap-2 px-4 py-5 text-[13px] text-[var(--text-faint)] sm:px-6">
+        <div data-reveal className="mx-auto flex max-w-[1120px] items-center gap-2 px-4 py-5 text-[13px] text-[var(--text-faint)] sm:px-6">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0" aria-hidden="true">
             <path d="M8 1.8 13.5 4v4c0 3.3-2.2 5.6-5.5 6.8C4.7 13.6 2.5 11.3 2.5 8V4L8 1.8Zm-2.3 6.5 1.7 1.7 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           视频和字幕只在浏览器中读取，不会上传到服务器。
         </div>
       </div>
-    </div>
+    </HomeMotion>
   );
 }

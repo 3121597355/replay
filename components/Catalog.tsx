@@ -147,8 +147,9 @@ export default function Catalog() {
             {list.slice(0, visible).map((work, index) => (
               <div
                 key={work.slug}
-                className="animate-fade-up"
-                style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+                className="min-w-0"
+                data-reveal
+                data-reveal-delay={(index % 3) * 100}
               >
                 <MovieCard work={work} />
               </div>
@@ -168,7 +169,7 @@ export default function Catalog() {
           </div>
         </>
       ) : (
-        <div className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center">
+        <div data-reveal className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center">
           <h3 className="text-[16px] font-semibold text-[var(--text)]">没有找到匹配的作品</h3>
           <p className="mt-1.5 text-[14px] text-[var(--text-dim)]">换个关键词，或清除难度和类型筛选试试。</p>
           <button onClick={reset} className="btn btn-secondary mt-5 !h-9 !px-4 !py-0 !text-[13px]">清空筛选</button>

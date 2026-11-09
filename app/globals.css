@@ -264,6 +264,36 @@ select:disabled {
   text-wrap: balance;
 }
 
+/* Home entrance matches the soft, staggered reveal in the Jianying project.
+   Pending is added only after JS is ready, so SSR/no-JS content stays visible. */
+.home-intro {
+  animation: homeIntro 700ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.home-hero:focus-within .home-intro {
+  animation: none;
+}
+@keyframes homeIntro {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+[data-home-motion='soft'] .home-reveal-pending {
+  opacity: 0;
+  transform: translateY(32px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-home-motion='system'] .home-reveal-pending {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+}
+[data-page='home'] .home-reveal-pending:focus-within {
+  opacity: 1;
+  transform: none;
+}
+[data-home-motion='reduce'] .home-intro {
+  animation: none;
+}
+
 .tnum {
   font-variant-numeric: tabular-nums;
 }
@@ -445,5 +475,9 @@ body:has([data-page='learn']) footer {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  /* An explicit home-page choice takes precedence over the system default. */
+  [data-home-motion='soft'] .home-intro {
+    animation-duration: 700ms !important;
   }
 }
