@@ -10,6 +10,8 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
   const reduced = () => mode === 'reduce' || (mode === 'system' && media.matches);
   const pendingClass = 'home-reveal-pending';
   const targets = new Map<HTMLElement, { ready: boolean; delay: number; animation?: Animation }>();
+  const activePointers = new Set<number>();
+  const pausedAnimations = new Set<Animation>();
   const cancel = (element: HTMLElement) => {
     const state = targets.get(element);
     state?.animation?.cancel();
@@ -37,7 +39,10 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
         { opacity: 1, transform: 'none' },
       ], { duration: 850, delay: state.delay, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
       state.animation = animation;
-      const finish = () => { if (state.animation === animation) state.animation = undefined; };
+      const finish = () => {
+        pausedAnimations.delete(animation);
+        if (state.animation === animation) state.animation = undefined;
+      };
       animation.onfinish = finish;
       animation.oncancel = finish;
     }
@@ -73,9 +78,28 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
   const changes = new MutationObserver(register);
   changes.observe(root, { childList: true, subtree: true });
 
+  // Hold the current visual position throughout a click or tap. Resuming on
+  // release preserves the entrance without moving the control under a finger.
+  const holdPointer = (event: PointerEvent) => {
+    activePointers.add(event.pointerId);
+    for (const [element, state] of Array.from(targets)) {
+      if (!(event.target instanceof Node) || !element.contains(event.target) || !state.animation) continue;
+      state.animation.pause();
+      pausedAnimations.add(state.animation);
+    }
+  };
+  const releasePointer = (event: PointerEvent) => {
+    activePointers.delete(event.pointerId);
+    if (activePointers.size) return;
+    for (const animation of Array.from(pausedAnimations)) {
+      if (animation.playState === 'paused') animation.play();
+    }
+    pausedAnimations.clear();
+  };
   const showFocused = (event: FocusEvent) => {
-    // Cancelling a moving card between pointerdown and pointerup can move the
-    // link away from the pointer. Only keyboard focus needs an instant reveal.
+    // Text fields match :focus-visible even for pointer focus. Do not snap an
+    // in-progress entrance to its final position between pointerdown and up.
+    if (activePointers.size) return;
     if (!(event.target instanceof HTMLElement) || !event.target.matches(':focus-visible')) return;
     for (const [element, state] of Array.from(targets)) {
       if (!(event.target instanceof Node) || !element.contains(event.target)) continue;
@@ -90,6 +114,8 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
         cancel(element);
         state.ready = true;
       }
+      activePointers.clear();
+      pausedAnimations.clear();
       return;
     }
     enter.disconnect();
@@ -112,6 +138,9 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
     }
     refresh();
   };
+  root.addEventListener('pointerdown', holdPointer, true);
+  document.addEventListener('pointerup', releasePointer, true);
+  document.addEventListener('pointercancel', releasePointer, true);
   root.addEventListener('focusin', showFocused);
   document.addEventListener('visibilitychange', refresh);
   window.addEventListener('pageshow', refresh);
@@ -120,11 +149,16 @@ export function setupScrollReveal(root: HTMLElement, mode: 'system' | 'soft' | '
     changes.disconnect();
     enter.disconnect();
     leave.disconnect();
+    root.removeEventListener('pointerdown', holdPointer, true);
+    document.removeEventListener('pointerup', releasePointer, true);
+    document.removeEventListener('pointercancel', releasePointer, true);
     root.removeEventListener('focusin', showFocused);
     document.removeEventListener('visibilitychange', refresh);
     window.removeEventListener('pageshow', refresh);
     stopWatchingMotion();
     for (const element of Array.from(targets.keys())) cancel(element);
+    activePointers.clear();
+    pausedAnimations.clear();
     targets.clear();
   };
 }

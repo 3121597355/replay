@@ -72,7 +72,7 @@ export default function Catalog() {
 
   return (
     <div>
-      <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 sm:p-4">
+      <div data-reveal data-reveal-delay="100" className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 sm:p-4">
         <div className="relative">
           <label htmlFor="catalog-search" className="sr-only">搜索片单</label>
           <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
