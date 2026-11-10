@@ -12,6 +12,7 @@ import { buildSrt, buildVtt, deriveName } from '@/lib/subtitle-export';
 import { episodeKey, guessLanguage, pairEpisodes, type Episode } from '@/lib/pairing';
 import { discardDownloadImport, readDownloadImport } from '@/lib/download-import';
 import { chooseDownloadSubtitle } from '@/lib/download-subtitles';
+import { trackEvent } from '@/lib/analytics-events';
 import {
   pickAndScan,
   readHandle,
@@ -139,6 +140,7 @@ function LearnInner() {
   const cueTokens = useMemo(() => cues.map((c) => tokenize(c.text)), [cues]);
 
   async function openLookup(word: string, sentence: string) {
+    trackEvent('word_lookup');
     setLookupState({ word, sentence, result: null, loading: true });
     try {
       const r = await lookup(word);
@@ -161,6 +163,7 @@ function LearnInner() {
       { word, sentence, translation: def, addedAt: Date.now() },
     ]);
     flash(`已收藏 ${word}`);
+    trackEvent('word_save');
   }
 
   function isWordSaved(word: string) {
@@ -301,6 +304,7 @@ function LearnInner() {
     setLoadingSample(false);
     const url = URL.createObjectURL(file);
     setVideoSource(url, file.name, file);
+    trackEvent('video_import');
     flash(`已加载：${file.name}`);
 
     // 立刻探一下能不能读到内容，别等点抽字幕才发现
@@ -353,7 +357,7 @@ function LearnInner() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      applySrt(String(reader.result ?? ''), file.name);
+      if (applySrt(String(reader.result ?? ''), file.name)) trackEvent('subtitle_import');
     };
     reader.readAsText(file, 'utf-8');
   }
@@ -384,6 +388,7 @@ function LearnInner() {
           bestLang: best ? guessLanguage(best.name) : undefined,
         }]);
         setDownloadImportError(undefined);
+        trackEvent('download_import');
         flash(selection.note);
         await discardDownloadImport(id).catch(() => flash('文件已导入，浏览器暂未清理临时副本。'));
         const url = new URL(window.location.href);
@@ -528,10 +533,12 @@ function LearnInner() {
       }
       setVideoSource(sample.video, `${sample.title}.mp4`);
       if (!applySrt(text, `${sample.title}.srt`)) throw new Error('配套 SRT 解析失败');
+      trackEvent('sample_ready');
       setFollow(true);
       flash('字幕已就绪，点击播放开始试学');
     } catch (err) {
       if (request.signal.aborted) return;
+      trackEvent('sample_error');
       setSampleError(err instanceof Error && !/Failed to fetch|NetworkError/i.test(err.message)
         ? err.message : '示例字幕加载失败，请检查网络后重试');
     } finally {
@@ -757,6 +764,7 @@ function LearnInner() {
     loopCueRef.current = selectedRef.current;
     loopRef.current = !loopRef.current;
     setLoop(loopRef.current);
+    if (loopRef.current) trackEvent('loop_enable');
   }
 
   // 自动滚动到当前句（用户手动翻看时暂停）
@@ -890,6 +898,7 @@ function LearnInner() {
       ...prev,
     ]);
     flash('已加入生词本');
+    trackEvent('cue_save');
   }
 
   function removeSaved(i: number) {
@@ -1151,11 +1160,12 @@ function LearnInner() {
                     onTimeUpdate();
                   }}
                   onEnded={onTimeUpdate}
-                  onPlay={() => setPlaying(true)}
+                  onPlay={() => { setPlaying(true); trackEvent('learning_start'); }}
                   onPause={() => setPlaying(false)}
                   onCanPlay={() => { setVideoStatus('ready'); setVideoError(undefined); }}
                   onWaiting={() => setVideoStatus('loading')}
                   onError={(event) => {
+                    trackEvent('video_error');
                     const code = event.currentTarget.error?.code;
                     setVideoError(code === 3 || code === 4
                       ? '这个浏览器无法播放此视频，请换用 Safari、Chrome 或 Edge，或选择其他视频。'
@@ -1692,6 +1702,7 @@ function LearnInner() {
                 <button
                   onClick={() => {
                     const n = exportAnkiCsv(cues);
+                    trackEvent('export_anki');
                     setShowExport(false);
                     flash(`已导出 ${n} 张卡片，Anki 里选「逗号分隔」+ 允许 HTML 导入`);
                   }}
@@ -1708,6 +1719,7 @@ function LearnInner() {
                   onClick={() => {
                     const text = buildSrt(cues);
                     exportSrtBlob(text, deriveName(sourceName, 'srt'));
+                    trackEvent('export_srt');
                     setShowExport(false);
                     flash(
                       translatedCount > 0
@@ -1733,6 +1745,7 @@ function LearnInner() {
                   onClick={() => {
                     const text = buildVtt(cues);
                     exportSrtBlob(text, deriveName(sourceName, 'vtt'));
+                    trackEvent('export_vtt');
                     setShowExport(false);
                     flash('已导出 WebVTT');
                   }}

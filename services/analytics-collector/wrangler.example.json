@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yilan-collector",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "vars": { "YILAN_SITES": "{\"replay\":[\"https://www.replayen.com\",\"https://replayen.com\"]}", "REPLAY_ADMIN_SITE": "replay" },
+  "d1_databases": [{ "binding": "DB", "database_name": "yilan-analytics", "database_id": "填写现有或新建D1的UUID" }],
+  "ratelimits": [
+    { "name": "RATE_LIMITER", "namespace_id": "743192", "simple": { "limit": 120, "period": 60 } },
+    { "name": "LOGIN_LIMITER", "namespace_id": "743193", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "triggers": { "crons": ["20 19 * * *"] }
+}
