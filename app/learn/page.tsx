@@ -1079,13 +1079,13 @@ function LearnInner() {
             </div>
           </div>
 
-          <div className="flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
-            <a href="/download" className="btn btn-ghost !min-h-[44px] !px-2.5 !py-1.5 !text-[12.5px]">下载视频</a>
+          <div className="learn-toolbar-actions flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
+            <a href="/download" className="btn btn-ghost">下载视频</a>
             {episodes && episodes.length > 0 && (
               <button
                 onClick={() => setShowPicker(true)}
                 title="选另一集"
-                className="btn btn-ghost flex items-center gap-1.5 !px-2.5 !py-1.5 !text-[12.5px]"
+                className="btn btn-ghost gap-1.5"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <rect x="3.5" y="5" width="17" height="4" rx="1.2" stroke="currentColor" strokeWidth="1.5" />
@@ -1111,12 +1111,12 @@ function LearnInner() {
             />
             {videoName && <button onClick={() => void clearCurrentLearning()}
               title="清除浏览器保存的本次视频、字幕和进度，保留生词本与原文件"
-              className="btn btn-ghost !px-2.5 !py-1.5 !text-[12.5px]">清除记录</button>}
+              className="btn btn-ghost">清除记录</button>}
             <button
               onClick={() => loadSample()}
               disabled={loadingSample}
               title="《海边的曼彻斯特》维修对话 · 约 39 秒 · 配套 SRT"
-              className="btn btn-ghost !px-3 !py-1.5 !text-[12.5px] disabled:opacity-35"
+              className="btn btn-ghost disabled:opacity-35"
             >
               {loadingSample ? '加载示例…' : '示例片段'}
             </button>
@@ -1128,7 +1128,7 @@ function LearnInner() {
                   ? '从视频里直接抽字幕轨，不需要单独的字幕文件'
                   : '先选一个视频'
               }
-              className={`btn !px-3 !py-1.5 !text-[12.5px] disabled:opacity-35 ${
+              className={`btn disabled:opacity-35 ${
                 videoFile && cues.length === 0 ? 'btn-gold' : 'btn-ghost'
               }`}
             >
@@ -1149,7 +1149,7 @@ function LearnInner() {
                       ? `已有 ${cachedHits} 句缓存译文，只翻缺的 ${pendingTrans} 句`
                       : '用你配的接口批量翻译缺中文的句子'
               }
-              className={`btn flex items-center gap-1.5 !px-2.5 !py-1.5 !text-[12.5px] disabled:opacity-40 ${
+              className={`btn gap-1.5 disabled:opacity-40 ${
                 jobRunning ? 'btn-gold' : 'btn-ghost'
               }`}
             >
@@ -1177,7 +1177,7 @@ function LearnInner() {
               onClick={() => setShowExport(true)}
               disabled={cues.length === 0}
               title="导出 Anki 卡片，或者带译文的时间轴"
-              className="btn btn-ghost flex items-center gap-1.5 !px-2.5 !py-1.5 !text-[12.5px] disabled:opacity-40"
+              className="btn btn-ghost gap-1.5 disabled:opacity-40"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 4v10m0 0 3.5-3.5M12 14 8.5 10.5M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1187,7 +1187,7 @@ function LearnInner() {
 
             <button
               onClick={() => setShowSaved((v) => !v)}
-              className={`btn flex items-center gap-1.5 !px-2.5 !py-1.5 !text-[12.5px] ${
+              className={`btn gap-1.5 ${
                 showSaved ? 'btn-gold' : 'btn-ghost'
               }`}
             >
@@ -1199,7 +1199,7 @@ function LearnInner() {
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="grid h-8 w-8 place-items-center rounded-lg border border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.20)] hover:text-[var(--text-soft)]"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.20)] hover:text-[var(--text-soft)]"
               title="翻译设置"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
