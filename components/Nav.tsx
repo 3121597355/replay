@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
+import ReplayMark from './ReplayMark';
 
 const links = [
   { href: '/', label: '首页' },
@@ -27,12 +28,7 @@ export default function Nav() {
     >
       <div className="mx-auto flex min-h-16 w-full min-w-0 max-w-[1120px] flex-wrap items-center gap-y-1 px-3 sm:px-6">
         <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 4.2A1.2 1.2 0 0 1 4.2 3h5.6A3.2 3.2 0 0 1 13 6.2v5.6A1.2 1.2 0 0 1 11.8 13H6.2A3.2 3.2 0 0 1 3 9.8V4.2Z" stroke="white" strokeWidth="1.4" />
-              <path d="m6.6 6 3.4 2-3.4 2V6Z" fill="white" />
-            </svg>
-          </span>
+          <ReplayMark className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]" />
           <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[480px]:block">
             Replay
           </span>

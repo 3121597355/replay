@@ -1,17 +1,19 @@
 'use client';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import ReplayMark from '../ReplayMark';
+import AdminIcon from './AdminIcon';
 import './admin.css';
 
 type Row = { name: string; count: number; label?: string };
 export type AdminSettings = { apiEnabled: boolean; eventsEnabled: boolean; exportsEnabled: boolean; hasToken: boolean; tokenUpdatedAt: string | null; timezone: string; retentionDays: number };
 export type AdminReport = { generatedAt: string; coverageStart: string | null; lastReceivedAt: string | null; summary: { pageviews: number; visitorDays: number; events: number; learningVisitorDays: number }; points: { date: string; pageviews: number; visitors: number }[]; pages: { path: string; views: number }[]; pagesTruncated: boolean; events: Row[]; devices: Row[]; browsers: Row[]; referrers: Row[]; definitions: Record<string, string> };
 type Panel = 'overview' | 'projects' | 'audience' | 'integration' | 'security';
-const panels: Record<Panel, { title: string; description: string; icon: string }> = {
-  overview: { title: '数据概览', description: '看看 Replay 正在被怎样使用。', icon: '◫' },
-  projects: { title: '学习表现', description: '了解访客的试学、查词、收藏与复习操作。', icon: '▤' },
-  audience: { title: '访问来源', description: '了解访客从哪里来，以及他们使用的设备。', icon: '◎' },
-  integration: { title: '统计与接口', description: '连接你的分析平台，让数据流向自己的工作空间。', icon: '⇄' },
-  security: { title: '账户安全', description: '管理管理员密码与登录安全。', icon: '⌑' },
+const panels: Record<Panel, { title: string; description: string }> = {
+  overview: { title: '数据概览', description: '看看 Replay 正在被怎样使用。' },
+  projects: { title: '学习表现', description: '了解访客的试学、查词、收藏与复习操作。' },
+  audience: { title: '访问来源', description: '了解访客从哪里来，以及他们使用的设备。' },
+  integration: { title: '统计与接口', description: '连接你的分析平台，让数据流向自己的工作空间。' },
+  security: { title: '账户安全', description: '管理管理员密码与登录安全。' },
 };
 const today = () => new Date(Date.now() + 28800000).toISOString().slice(0, 10);
 const daysAgo = (n: number) => new Date(Date.parse(today()) - n * 86400000).toISOString().slice(0, 10);
@@ -123,11 +125,11 @@ export default function AdminDashboard({ initialReport, initialSettings, initial
   const exportCount = report?.events.filter(row => row.name.startsWith('export_')).reduce((sum, row) => sum + row.count, 0) || 0;
   const summary = report?.summary;
   return <div data-replay-admin className="ra-shell">
-    <aside className="ra-sidebar"><a className="ra-brand" href="/admin"><span className="ra-monogram">R</span><span>Replay<small>管理员后台</small></span></a>
-      <nav aria-label="后台栏目">{(Object.keys(panels) as Panel[]).map(key => <div className="ra-nav-item" key={key}>{key === 'integration' && <div className="ra-nav-divider" />}<button className={panel === key ? 'active' : ''} aria-current={panel === key ? 'page' : undefined} onClick={() => navigate(key)}><span aria-hidden="true">{panels[key].icon}</span>{panels[key].title}</button></div>)}<a href="https://github.com/3121597355/replay" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">✎</span>网站内容<span className="ra-nav-out" aria-hidden="true">↗</span></a></nav>
-      <div className="ra-sidebar-bottom"><span className="ra-identity"><i />admin</span><button onClick={async () => { try { await api('logout', 'POST', {}); window.location.assign('/admin/login'); } catch (e) { setError(e instanceof Error ? e.message : '退出失败'); } }}>退出登录</button><a href="/">← 返回网站</a></div>
+    <aside className="ra-sidebar"><a className="ra-brand" href="/admin"><ReplayMark className="ra-brand-mark" /><span className="ra-brand-copy">Replay<small>管理员后台</small></span></a>
+      <nav aria-label="后台栏目">{(Object.keys(panels) as Panel[]).map(key => <div className="ra-nav-item" key={key}>{key === 'integration' && <div className="ra-nav-divider" />}<button className={panel === key ? 'active' : ''} aria-current={panel === key ? 'page' : undefined} onClick={() => navigate(key)}><AdminIcon name={key} />{panels[key].title}</button></div>)}<a href="https://github.com/3121597355/replay" target="_blank" rel="noopener noreferrer"><AdminIcon name="website" />网站内容<span className="ra-nav-out" aria-hidden="true">↗</span></a></nav>
+      <div className="ra-sidebar-bottom"><span className="ra-identity"><i />admin</span><button onClick={async () => { try { await api('logout', 'POST', {}); window.location.assign('/admin/login'); } catch (e) { setError(e instanceof Error ? e.message : '退出失败'); } }}>退出登录</button><a className="ra-site-link" href="/"><AdminIcon name="website" />返回网站</a></div>
     </aside>
-    <div className="ra-workspace"><header className="ra-topbar"><span>网站 / {panels[panel].title}</span><div><span className="ra-protected"><i />管理员访问</span><a href="/">查看网站 <span aria-hidden="true">↗</span></a></div></header>
+    <div className="ra-workspace"><header className="ra-topbar"><span>网站 / {panels[panel].title}</span><div><span className="ra-protected"><i />管理员访问</span><a className="ra-site-link" href="/"><AdminIcon name="website" />查看网站 <span aria-hidden="true">↗</span></a></div></header>
       <div className="ra-main"><div className="ra-page-heading"><div><p className="ra-eyebrow">网站数据</p><h1>{panels[panel].title}</h1><p className="ra-muted">{panels[panel].description}</p></div>{dataPanel && <div className="ra-heading-actions"><button className="ra-secondary" onClick={() => void loadReport()} disabled={busy}>{busy ? '读取中…' : '刷新'}</button><button className="ra-secondary" onClick={() => download('csv')} disabled={!report || !config?.exportsEnabled}>导出 CSV <span aria-hidden="true">↓</span></button></div>}</div>
         {dataPanel && <div className="ra-date-toolbar"><div className="ra-date-presets" role="group" aria-label="统计日期范围">{[7, 30, 90].map(n => <button key={n} className={dates.start === daysAgo(n - 1) && dates.end === today() ? 'active' : ''} onClick={() => { const next = { start: daysAgo(n - 1), end: today() }; setDraftDates(next); setDates(next); }}>近 {n} 天</button>)}</div><form onSubmit={query}><label className="ra-sr-only" htmlFor="ra-date-from">开始日期</label><input id="ra-date-from" type="date" required max={draftDates.end} value={draftDates.start} onChange={e => setDraftDates({ ...draftDates, start: e.target.value })} /><span>—</span><label className="ra-sr-only" htmlFor="ra-date-to">结束日期</label><input id="ra-date-to" type="date" required min={draftDates.start} max={today()} value={draftDates.end} onChange={e => setDraftDates({ ...draftDates, end: e.target.value })} /><button className="ra-date-query" type="submit">查询</button></form></div>}
         {error && <div className="ra-error" role="alert">{error}</div>}{message && <div className="ra-success" role="status">{message}</div>}
