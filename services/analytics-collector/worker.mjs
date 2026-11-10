@@ -51,7 +51,7 @@ export default {
       if (!env.DB || !env.VISITOR_SALT || env.VISITOR_SALT.length < 32)
         return json({ error: "采集服务尚未配置完成" }, 503);
       const registered = sites(env);
-      const admin = /^\/v1\/websites\/([\w-]{1,100})\/admin\/(login|report|settings|token)$/.exec(url.pathname);
+      const admin = /^\/v1\/websites\/([\w-]{1,100})\/admin\/(login|report|settings|token|password)$/.exec(url.pathname);
       if (admin) {
         if (!registered[admin[1]]) return json({ error: '网站未登记' }, 404);
         return await adminRoute(request, env, admin[1], admin[2]);

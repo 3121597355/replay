@@ -23,10 +23,10 @@ async function smallJson(request) {
 }
 export async function settings(env, id) {
   const row = await env.DB.prepare('SELECT data FROM admin_settings WHERE site_id=?').bind(id).first();
-  return { apiEnabled: false, eventsEnabled: true, exportsEnabled: true, ...(row ? JSON.parse(row.data) : {}) };
+  return { apiEnabled: false, eventsEnabled: true, exportsEnabled: true, sessionVersion: 0, ...(row ? JSON.parse(row.data) : {}) };
 }
 async function saveSettings(env, id, value) {
-  await env.DB.prepare('INSERT INTO admin_settings(site_id,data) VALUES (?,?) ON CONFLICT(site_id) DO UPDATE SET data=excluded.data').bind(id, JSON.stringify(value)).run();
+  await env.DB.prepare('INSERT INTO admin_settings(site_id,data) VALUES (?,?) ON CONFLICT(site_id) DO UPDATE SET data=json_patch(admin_settings.data,excluded.data)').bind(id, JSON.stringify(value)).run();
 }
 const safeSettings = value => ({ apiEnabled: value.apiEnabled, eventsEnabled: value.eventsEnabled, exportsEnabled: value.exportsEnabled, hasToken: !!value.tokenHash, tokenUpdatedAt: value.tokenUpdatedAt || null, timezone: 'Asia/Shanghai', retentionDays: 400 });
 export async function passwordHash(password, salt) {
@@ -38,7 +38,7 @@ export async function isAdmin(request, env, id) {
   const [prefix, body, signature] = token.split('.');
   if (!env.REPLAY_ADMIN_SECRET || prefix !== 'rpa' || !body || !signature || token.length > 1024) return false;
   if (!same(await hmac(env.REPLAY_ADMIN_SECRET, body), signature)) return false;
-  try { const payload = JSON.parse(atob(body)); return payload.site === id && payload.exp > Date.now() && payload.scope === 'admin'; } catch { return false; }
+  try { const payload = JSON.parse(atob(body)); const config = await settings(env, id); return payload.site === id && payload.exp > Date.now() && payload.scope === 'admin' && (payload.version ?? 0) === config.sessionVersion; } catch { return false; }
 }
 async function canRead(request, env, id, config) {
   if (await isAdmin(request, env, id)) return true;
@@ -90,18 +90,18 @@ async function report(env, id, dates) {
 }
 export async function adminRoute(request, env, id, action) {
   if (id !== (env.REPLAY_ADMIN_SITE || 'replay')) return json({ error: '未开放此站点管理' }, 404);
+  const config = await settings(env, id);
   if (action === 'login' && request.method === 'POST') {
     if (!env.REPLAY_ADMIN_SECRET || !env.REPLAY_ADMIN_PASSWORD_HASH || !env.LOGIN_LIMITER) return json({ error: '后台管理员尚未配置' }, 503);
     if (!(await env.LOGIN_LIMITER.limit({ key: await hmac(env.REPLAY_ADMIN_SECRET, request.headers.get('CF-Connecting-IP') || 'local') })).success) return json({ error: '尝试过于频繁，请一分钟后再试' }, 429);
     if (Number(request.headers.get('content-length')) > 2048) return json({ error: '请求过大' }, 413);
     const input = await smallJson(request); if (!input) return json({ error: '请求格式无效或过大' }, 400);
     if (typeof input.password !== 'string' || input.password.length > 200) return json({ error: '账号或密码错误' }, 401);
-    const [salt, expected] = env.REPLAY_ADMIN_PASSWORD_HASH.split(':');
+    const [salt, expected] = (config.passwordHash || env.REPLAY_ADMIN_PASSWORD_HASH).split(':');
     if (input.username !== 'admin' || !salt || !expected || !same(await passwordHash(input.password, salt), expected)) return json({ error: '账号或密码错误' }, 401);
-    const body = btoa(JSON.stringify({ site: id, scope: 'admin', exp: Date.now() + 8 * 3600000 }));
+    const body = btoa(JSON.stringify({ site: id, scope: 'admin', version: config.sessionVersion, exp: Date.now() + 8 * 3600000 }));
     return json({ token: `rpa.${body}.${await hmac(env.REPLAY_ADMIN_SECRET, body)}`, expiresIn: 28800 });
   }
-  const config = await settings(env, id);
   if (action === 'report' && request.method === 'GET') {
     if (!await canRead(request, env, id, config)) return json({ error: '需要有效的管理员登录或统计只读密钥' }, 401);
     const dates = range(new URL(request.url));
@@ -109,20 +109,30 @@ export async function adminRoute(request, env, id, action) {
     return json({ ...await report(env, id, dates), capabilities: { exportsEnabled: config.exportsEnabled } });
   }
   if (!await isAdmin(request, env, id)) return json({ error: '请先登录后台' }, 401);
+  if (action === 'password' && request.method === 'POST') {
+    const input = await smallJson(request);
+    if (!input || typeof input.currentPassword !== 'string' || input.currentPassword.length > 200 || typeof input.password !== 'string' || input.password.length < 12 || input.password.length > 128) return json({ error: '新密码需为 12～128 个字符' }, 400);
+    const [salt, expected] = (config.passwordHash || env.REPLAY_ADMIN_PASSWORD_HASH || '').split(':');
+    if (!salt || !expected || !same(await passwordHash(input.currentPassword, salt), expected)) return json({ error: '当前密码不正确' }, 400);
+    if (input.currentPassword === input.password) return json({ error: '请使用与当前密码不同的新密码' }, 400);
+    const nextSalt = hex(crypto.getRandomValues(new Uint8Array(24)));
+    await saveSettings(env, id, { passwordHash: nextSalt + ':' + await passwordHash(input.password, nextSalt), sessionVersion: config.sessionVersion + 1 });
+    return json({ ok: true });
+  }
   if (action === 'settings' && request.method === 'GET') return json(safeSettings(config));
   if (action === 'settings' && request.method === 'PUT') {
     const input = await smallJson(request); if (!input) return json({ error: '无效设置' }, 400);
     if (typeof input.apiEnabled !== 'boolean' || typeof input.eventsEnabled !== 'boolean' || typeof input.exportsEnabled !== 'boolean') return json({ error: '无效设置' }, 400);
     if (input.apiEnabled && !config.tokenHash) return json({ error: '请先生成统计只读密钥' }, 400);
-    const next = { ...config, apiEnabled: input.apiEnabled, eventsEnabled: input.eventsEnabled, exportsEnabled: input.exportsEnabled };
+    const next = { apiEnabled: input.apiEnabled, eventsEnabled: input.eventsEnabled, exportsEnabled: input.exportsEnabled };
     await saveSettings(env, id, next);
-    return json(safeSettings(next));
+    return json(safeSettings({ ...config, ...next }));
   }
   if (action === 'token' && request.method === 'POST') {
     const token = `rps_${hex(crypto.getRandomValues(new Uint8Array(32)))}`;
-    const next = { ...config, tokenHash: await sha256(token), tokenUpdatedAt: new Date().toISOString() };
+    const next = { tokenHash: await sha256(token), tokenUpdatedAt: new Date().toISOString() };
     await saveSettings(env, id, next);
-    return json({ token, ...safeSettings(next) });
+    return json({ token, ...safeSettings({ ...config, ...next }) });
   }
   return json({ error: '接口不存在' }, 404);
 }

@@ -6,9 +6,17 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Replay 管理后台', robots: { index: false, follow: false } };
 export default async function AdminPage() {
   const token = cookies().get(ADMIN_COOKIE)?.value;
-  if (!token) redirect('/admin/login');
+  if (!token || token.length > 1024) redirect('/admin/login');
   let valid = false;
-  try { valid = (await upstream('settings', token)).ok; } catch {}
+  let initialSettings, initialReport;
+  try {
+    const end = new Date(Date.now() + 28800000).toISOString().slice(0, 10);
+    const start = new Date(Date.parse(end) - 29 * 86400000).toISOString().slice(0, 10);
+    const [config, report] = await Promise.all([upstream('settings', token), upstream('report', token, 'GET', undefined, `?start=${start}&end=${end}`)]);
+    valid = config.ok;
+    if (valid) initialSettings = await config.json();
+    if (report.ok) initialReport = await report.json();
+  } catch {}
   if (!valid) redirect('/admin/login');
-  return <AdminDashboard />;
+  return <AdminDashboard initialSettings={initialSettings} initialReport={initialReport} />;
 }

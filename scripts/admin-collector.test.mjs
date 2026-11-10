@@ -62,3 +62,27 @@ test('功能事件去重、不增加 PV、后台不统计且旧一览协议保�
   assert.equal(sourceHost('javascript:alert(1)'), 'direct');
   f.db.close();
 });
+
+test('管理员修改密码需验证旧密码，持久化摘要并使全部旧会话失效', async () => {
+  const f = await fixture(), base = '/v1/websites/replay/admin/';
+  const admin = await f.login();
+  const body = { currentPassword: 'test-admin-password', password: 'a-new-admin-password-2026' };
+  assert.equal((await f.call(base + 'password', 'POST', body)).status, 401);
+  assert.equal((await f.call(base + 'password', 'POST', { ...body, currentPassword: 'wrong' }, admin)).status, 400);
+  assert.equal((await f.call(base + 'password', 'POST', { ...body, password: 'short' }, admin)).status, 400);
+  const key = (await (await f.call(base + 'token', 'POST', {}, admin)).json()).token;
+  await f.call(base + 'settings', 'PUT', { apiEnabled: true, eventsEnabled: true, exportsEnabled: true }, admin);
+  assert.equal((await f.call(base + 'password', 'POST', body, key)).status, 401);
+  assert.equal((await f.call(base + 'password', 'POST', body, admin)).status, 200);
+  assert.equal((await f.call(base + 'settings', 'GET', undefined, admin)).status, 401);
+  assert.equal((await f.call(base + 'login', 'POST', { username: 'admin', password: body.currentPassword })).status, 401);
+  const result = await f.call(base + 'login', 'POST', { username: 'admin', password: body.password });
+  assert.equal(result.status, 200);
+  const next = (await result.json()).token;
+  const config = await (await f.call(base + 'settings', 'GET', undefined, next)).json();
+  assert.equal(config.hasToken, true); assert.ok(!JSON.stringify(config).includes('passwordHash'));
+  assert.equal((await f.call(base + 'report', 'GET', undefined, key)).status, 200);
+  const stored = f.db.prepare('SELECT data FROM admin_settings').get().data;
+  assert.ok(!stored.includes(body.password)); assert.equal(JSON.parse(stored).sessionVersion, 1);
+  f.db.close();
+});

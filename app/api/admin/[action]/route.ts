@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 const error = (message: string, status: number) => NextResponse.json({ error: message }, { status, headers: noStore });
 async function handle(request: NextRequest, { params }: { params: { action: string } }) {
   const { action } = params;
-  const allowed: Record<string, string[]> = { login: ['POST'], logout: ['POST'], report: ['GET'], settings: ['GET', 'PUT'], token: ['POST'] };
+  const allowed: Record<string, string[]> = { login: ['POST'], logout: ['POST'], report: ['GET'], settings: ['GET', 'PUT'], token: ['POST'], password: ['POST'] };
   if (!allowed[action]?.includes(request.method)) return error('接口不存在', 404);
   if (request.method !== 'GET' && !sameOrigin(request)) return error('请求来源无效', 403);
   if (Number(request.headers.get('content-length')) > 2048) return error('请求过大', 413);
@@ -23,7 +23,9 @@ async function handle(request: NextRequest, { params }: { params: { action: stri
       result.cookies.set(ADMIN_COOKIE, data.token, { httpOnly: true, secure: request.nextUrl.protocol === 'https:', sameSite: 'strict', path: '/', maxAge: 28800 });
       return result;
     }
-    return copyResponse(response);
+    const result = await copyResponse(response);
+    if (action === 'password' && response.ok) result.cookies.delete(ADMIN_COOKIE);
+    return result;
   } catch { return error('统计服务连接失败，请稍后重试', 502); }
 }
 export const GET = handle;

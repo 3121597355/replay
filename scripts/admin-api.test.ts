@@ -9,12 +9,16 @@ test('后台接口拒绝未登录、跨站修改和伪造会话；登录 cookie 
   try {
     assert.equal((await adminGet(new NextRequest('https://www.replayen.com/api/admin/report'), { params: { action: 'report' } })).status, 401);
     assert.equal((await adminPost(new NextRequest('https://www.replayen.com/api/admin/token', { method: 'POST', headers: { Origin: 'https://evil.example', Cookie: 'replay_admin=fake' }, body: '{}' }), { params: { action: 'token' } })).status, 403);
+    assert.equal((await adminPost(new NextRequest('https://www.replayen.com/api/admin/password', { method: 'POST', headers: { Origin: 'https://evil.example', Cookie: 'replay_admin=fake' }, body: '{}' }), { params: { action: 'password' } })).status, 403);
     global.fetch = async () => Response.json({ error: '请先登录后台' }, { status: 401 });
     assert.equal((await adminGet(new NextRequest('https://www.replayen.com/api/admin/report', { headers: { Cookie: 'replay_admin=forged' } }), { params: { action: 'report' } })).status, 401);
     global.fetch = async () => Response.json({ token: 'rpa.test.signature' });
     const login = await adminPost(new NextRequest('https://www.replayen.com/api/admin/login', { method: 'POST', headers: { Origin: 'https://www.replayen.com' }, body: '{"username":"admin","password":"test"}' }), { params: { action: 'login' } });
     assert.equal(login.status, 200); assert.deepEqual(await login.json(), { ok: true });
     const cookie = login.headers.get('set-cookie') || ''; assert.match(cookie, /HttpOnly/); assert.match(cookie, /Secure/); assert.match(cookie, /SameSite=strict/i);
+    global.fetch = async () => Response.json({ ok: true });
+    const changed = await adminPost(new NextRequest('https://www.replayen.com/api/admin/password', { method: 'POST', headers: { Origin: 'https://www.replayen.com', Cookie: 'replay_admin=rpa.test.signature' }, body: '{}' }), { params: { action: 'password' } });
+    assert.equal(changed.status, 200); assert.match(changed.headers.get('set-cookie') || '', /replay_admin=;/);
   } finally { global.fetch = original; }
 });
 test('统计密钥只在请求头接受，查询参数与管理员会话不能替代只读密钥', async () => {
