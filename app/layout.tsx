@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Nav from '@/components/Nav';
+import Analytics from '@/components/Analytics';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:4310'),
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <script defer src="https://cloud.umami.is/script.js" data-website-id="10592750-fb71-440a-8f01-bd7e7233432c" />
+        <Analytics />
       </head>
       <body>
         <Nav />
