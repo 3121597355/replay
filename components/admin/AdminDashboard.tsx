@@ -2,18 +2,20 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import ReplayMark from '../ReplayMark';
 import AdminIcon from './AdminIcon';
+import { changelog } from '@/lib/changelog';
 import './admin.css';
 
 type Row = { name: string; count: number; label?: string };
 export type AdminSettings = { apiEnabled: boolean; eventsEnabled: boolean; exportsEnabled: boolean; hasToken: boolean; tokenUpdatedAt: string | null; timezone: string; retentionDays: number };
 export type AdminReport = { generatedAt: string; coverageStart: string | null; lastReceivedAt: string | null; summary: { pageviews: number; visitorDays: number; events: number; learningVisitorDays: number }; points: { date: string; pageviews: number; visitors: number }[]; pages: { path: string; views: number }[]; pagesTruncated: boolean; events: Row[]; devices: Row[]; browsers: Row[]; referrers: Row[]; definitions: Record<string, string> };
-type Panel = 'overview' | 'projects' | 'audience' | 'integration' | 'security';
+type Panel = 'overview' | 'projects' | 'audience' | 'integration' | 'security' | 'changelog';
 const panels: Record<Panel, { title: string; description: string }> = {
   overview: { title: '数据概览', description: '看看 Replay 正在被怎样使用。' },
   projects: { title: '学习表现', description: '了解访客的试学、查词、收藏与复习操作。' },
   audience: { title: '访问来源', description: '了解访客从哪里来，以及他们使用的设备。' },
   integration: { title: '统计与接口', description: '连接你的分析平台，让数据流向自己的工作空间。' },
   security: { title: '账户安全', description: '管理管理员密码与登录安全。' },
+  changelog: { title: '更新日志', description: '按版本查看网站的新功能、修复和改进。' },
 };
 const today = () => new Date(Date.now() + 28800000).toISOString().slice(0, 10);
 const daysAgo = (n: number) => new Date(Date.parse(today()) - n * 86400000).toISOString().slice(0, 10);
@@ -130,7 +132,7 @@ export default function AdminDashboard({ initialReport, initialSettings, initial
       <div className="ra-sidebar-bottom"><span className="ra-identity"><i />admin</span><button onClick={async () => { try { await api('logout', 'POST', {}); window.location.assign('/admin/login'); } catch (e) { setError(e instanceof Error ? e.message : '退出失败'); } }}>退出登录</button><a className="ra-site-link" href="/"><AdminIcon name="website" />返回网站</a></div>
     </aside>
     <div className="ra-workspace"><header className="ra-topbar"><span>网站 / {panels[panel].title}</span><div><span className="ra-protected"><i />管理员访问</span><a className="ra-site-link" href="/"><AdminIcon name="website" />查看网站 <span aria-hidden="true">↗</span></a></div></header>
-      <div className="ra-main"><div className="ra-page-heading"><div><p className="ra-eyebrow">网站数据</p><h1>{panels[panel].title}</h1><p className="ra-muted">{panels[panel].description}</p></div>{dataPanel && <div className="ra-heading-actions"><button className="ra-secondary" onClick={() => void loadReport()} disabled={busy}>{busy ? '读取中…' : '刷新'}</button><button className="ra-secondary" onClick={() => download('csv')} disabled={!report || !config?.exportsEnabled}>导出 CSV <span aria-hidden="true">↓</span></button></div>}</div>
+      <div className="ra-main"><div className="ra-page-heading"><div><p className="ra-eyebrow">{panel === 'changelog' ? '版本记录' : '网站数据'}</p><h1>{panels[panel].title}</h1><p className="ra-muted">{panels[panel].description}</p></div>{dataPanel && <div className="ra-heading-actions"><button className="ra-secondary" onClick={() => void loadReport()} disabled={busy}>{busy ? '读取中…' : '刷新'}</button><button className="ra-secondary" onClick={() => download('csv')} disabled={!report || !config?.exportsEnabled}>导出 CSV <span aria-hidden="true">↓</span></button></div>}</div>
         {dataPanel && <div className="ra-date-toolbar"><div className="ra-date-presets" role="group" aria-label="统计日期范围">{[7, 30, 90].map(n => <button key={n} className={dates.start === daysAgo(n - 1) && dates.end === today() ? 'active' : ''} onClick={() => { const next = { start: daysAgo(n - 1), end: today() }; setDraftDates(next); setDates(next); }}>近 {n} 天</button>)}</div><form onSubmit={query}><label className="ra-sr-only" htmlFor="ra-date-from">开始日期</label><input id="ra-date-from" type="date" required max={draftDates.end} value={draftDates.start} onChange={e => setDraftDates({ ...draftDates, start: e.target.value })} /><span>—</span><label className="ra-sr-only" htmlFor="ra-date-to">结束日期</label><input id="ra-date-to" type="date" required min={draftDates.start} max={today()} value={draftDates.end} onChange={e => setDraftDates({ ...draftDates, end: e.target.value })} /><button className="ra-date-query" type="submit">查询</button></form></div>}
         {error && <div className="ra-error" role="alert">{error}</div>}{message && <div className="ra-success" role="status">{message}</div>}
         {dataPanel && !report && <section className="ra-panel"><Empty>{busy ? '正在读取网站统计…' : '暂时无法读取数据，请点击刷新重试。'}</Empty></section>}
@@ -142,7 +144,11 @@ export default function AdminDashboard({ initialReport, initialSettings, initial
           <section className="ra-panel"><div className="ra-panel-heading"><div><h2>统计口径与数据隐私</h2><p>统一统计协议，保留你现有的一览连接。</p></div></div><p className="ra-help">管理页和 API 不计入访问。功能事件不增加 PV，同一个事件 ID 重试不会重复入库。访客按日匿名估算，访客日不能当作跨日去重人数。</p><p className="ra-help">浏览器开启 DNT / GPC 时，访问和学习操作会跳过采集。视频、字幕、文件名、生词内容与用户 API 配置不上传。</p><p className="ra-help">现有一览继续使用原 status / data 接口及原读取密钥；新统计 API 通过独立只读密钥连接。</p></section>
         </div>}
         {panel === 'security' && <div className="ra-settings-layout"><section className="ra-panel"><div className="ra-panel-heading"><div><h2>修改管理员密码</h2><p>修改成功后，所有已有管理员会话失效，请使用新密码重新登录。</p></div></div><p className="ra-account-info">当前账户：admin</p><form className="ra-security-form" onSubmit={changePassword}><label>当前密码<input type="password" autoComplete="current-password" required maxLength={200} value={passwords.current} onChange={e => setPasswords({ ...passwords, current: e.target.value })} /></label><label>新密码<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={passwords.next} onChange={e => setPasswords({ ...passwords, next: e.target.value })} /><small>至少 12 个字符，建议使用密码管理器生成。</small></label><label>确认新密码<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} /></label><button className="ra-primary" disabled={saving}>{saving ? '正在更新…' : '更新密码'}</button></form></section><section className="ra-panel"><div className="ra-panel-heading"><div><h2>登录与接口权限</h2><p>管理员会话和分析平台密钥独立管理。</p></div></div><dl className="ra-account-list"><dt>会话有效期</dt><dd>8 小时</dd><dt>登录保护</dt><dd>服务端验证 · 登录限流 · 安全 Cookie</dd><dt>统计接口</dt><dd>只读密钥不能进入后台或修改设置</dd><dt>网站内容</dt><dd><a href="https://github.com/3121597355/replay" target="_blank" rel="noopener noreferrer">通过 GitHub 管理网站源码与内容 ↗</a></dd></dl></section></div>}
-        <footer className="ra-dashboard-footer"><span>匿名统计 · Asia/Shanghai · 管理页不计入{dataPanel ? ' · 每 10 秒自动刷新' : ''}</span><span>{report ? `更新于 ${dateTime(report.generatedAt)}` : '等待统计连接'}</span></footer>
+        {panel === 'changelog' && <div className="ra-release-list">{changelog.map(release => <article className="ra-panel ra-release" key={release.version}>
+          <div className="ra-release-meta"><time dateTime={release.date}>{release.date}</time><span>版本 {release.version}</span>{release === changelog[0] && <strong>最新</strong>}</div>
+          <h2>{release.title}</h2><ul>{release.changes.map((change, i) => <li key={i}><span className="ra-change-type">{change.type}</span><span>{change.text}</span></li>)}</ul>
+        </article>)}</div>}
+        <footer className="ra-dashboard-footer"><span>{panel === 'changelog' ? '更新日志随网站版本发布' : `匿名统计 · Asia/Shanghai · 管理页不计入${dataPanel ? ' · 每 10 秒自动刷新' : ''}`}</span><span>{panel === 'changelog' ? `最新版本 ${changelog[0].version}` : report ? `更新于 ${dateTime(report.generatedAt)}` : '等待统计连接'}</span></footer>
       </div>
     </div>
   </div>;

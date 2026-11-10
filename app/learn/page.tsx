@@ -48,6 +48,8 @@ import { lookup, loadDict, tokenize } from '@/lib/dict';
 import sample from '@/public/sample/manchester-repair-v2.json';
 import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
 import { fetchTextWithTimeout } from '@/lib/browser';
+import { clearLearningSession, fileLearningSource, loadLearningSession, matchesLearningVideo,
+  rememberLearningSession, saveLearningSession, type LearningSession, type LearningSource } from '@/lib/learning-session';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -63,6 +65,16 @@ function LearnInner() {
   const [videoUrl, setVideoUrl] = useState<string>();
   const [videoFile, setVideoFile] = useState<File>();
   const [videoName, setVideoName] = useState<string>();
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionNotice, setSessionNotice] = useState<string>();
+  const [missingSession, setMissingSession] = useState<LearningSession | null>(null);
+  const sessionIdRef = useRef<string>();
+  const sessionSourceRef = useRef<LearningSource>();
+  const sessionTimeRef = useRef(0);
+  const restoreTimeRef = useRef<number | null>(null);
+  const restoreGenerationRef = useRef(0);
+  const sessionSnapshotRef = useRef<LearningSession | null>(null);
+  const flushSessionRef = useRef<() => void>(() => {});
   const [downloadImportError, setDownloadImportError] = useState<string>();
   const importedDownloadRef = useRef<string>();
   const [loadingSample, setLoadingSample] = useState(false);
@@ -258,6 +270,82 @@ function LearnInner() {
     setTimeout(() => setToast(undefined), 2600);
   }, []);
 
+  // Rebuild blob URLs from the saved File; an old blob URL never survives a page reload.
+  function restoreLearning(saved: LearningSession, file?: File) {
+    restoreGenerationRef.current++;
+    sessionIdRef.current = saved.id;
+    sessionSourceRef.current = saved.source;
+    sessionTimeRef.current = saved.time;
+    restoreTimeRef.current = saved.time;
+    let restoredCues = saved.cues;
+    if (saved.hash) {
+      const cache = readCache(saved.hash);
+      if (cache) restoredCues = applyCache(restoredCues, cache).cues;
+    }
+    subHashRef.current = saved.hash;
+    cuesRef.current = restoredCues;
+    setSubHash(saved.hash); setCues(restoredCues); setSourceName(saved.sourceName);
+    setRate(RATES.includes(saved.rate) ? saved.rate : 1);
+    loopRef.current = saved.loop; setLoop(saved.loop); setShowTrans(saved.showTrans);
+    const selectedCue = saved.selected >= 0 && saved.selected < restoredCues.length ? saved.selected : -1;
+    selectedRef.current = selectedCue; loopCueRef.current = selectedCue;
+    setSelected(selectedCue); setCurrent(-1); currentRef.current = -1;
+    setVideoName(saved.videoName); setVideoFile(file); setResume(null); setPlaying(false);
+    setVideoStatus('loading'); setVideoError(undefined); setFollow(true);
+    const missing = saved.source.kind === 'file' && !file;
+    setMissingSession(missing ? saved : null);
+    setVideoUrl(saved.source.kind === 'sample' ? sample.video : file ? URL.createObjectURL(file) : undefined);
+    setSessionNotice(missing ? '字幕和进度已恢复。请选择原视频继续，学习记录会保留。' : undefined);
+    if (!missing) flash('已恢复上次的视频、字幕和进度');
+  }
+
+  useEffect(() => {
+    const generation = restoreGenerationRef.current;
+    let cancelled = false;
+    if (params.get('download')) { setSessionLoading(false); return; }
+    void loadLearningSession().then(saved => {
+      if (cancelled || generation !== restoreGenerationRef.current) return;
+      if (saved) restoreLearning(saved.session, saved.video);
+    }).catch(() => {
+      if (!cancelled && generation === restoreGenerationRef.current)
+        setSessionNotice('当前浏览器无法读取本地学习记录，仍可直接导入文件学习。');
+    }).finally(() => { if (!cancelled) setSessionLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  sessionSnapshotRef.current = sessionIdRef.current && sessionSourceRef.current ? {
+    id: sessionIdRef.current, source: sessionSourceRef.current, videoName: videoName ?? '',
+    cues, sourceName, hash: subHash, time: restoreTimeRef.current ?? sessionTimeRef.current,
+    selected, rate, loop, showTrans, updatedAt: Date.now(),
+  } : null;
+  flushSessionRef.current = () => {
+    const snapshot = sessionSnapshotRef.current;
+    if (!snapshot) return;
+    const latest = { ...snapshot, time: restoreTimeRef.current ?? sessionTimeRef.current,
+      selected: selectedRef.current, updatedAt: Date.now() };
+    void saveLearningSession(latest).then(result => {
+      if (sessionIdRef.current === latest.id && result.message) setSessionNotice(result.message);
+    });
+  };
+  useEffect(() => {
+    const snapshot = sessionSnapshotRef.current;
+    if (!snapshot) return;
+    // Update memory immediately, then debounce disk writes while switching subtitle lines.
+    rememberLearningSession(snapshot);
+    const timer = setTimeout(() => flushSessionRef.current(), 500);
+    return () => clearTimeout(timer);
+  }, [videoName, videoUrl, cues, sourceName, subHash, rate, loop, showTrans, selected]);
+  useEffect(() => {
+    const flush = () => flushSessionRef.current();
+    const hidden = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      flush(); window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', hidden);
+    };
+  }, []);
+
   /** 把浏览器原生错误翻译成人话，别把英文原文甩给用户 */
   function humanize(err: unknown): string {
     const msg = err instanceof Error ? err.message : String(err ?? '');
@@ -276,6 +364,18 @@ function LearnInner() {
   // ---------- 视频 ----------
   function setVideoSource(url: string, name: string, file?: File) {
     videoRef.current?.pause();
+    restoreGenerationRef.current++;
+    const id = crypto.randomUUID();
+    sessionIdRef.current = id; sessionSourceRef.current = file ? fileLearningSource(file) : { kind: 'sample' };
+    sessionTimeRef.current = 0; restoreTimeRef.current = 0;
+    setSessionLoading(false); setMissingSession(null);
+    setSessionNotice(file ? '正在将视频保存在此浏览器，保存后退出也可继续。' : undefined);
+    const initial: LearningSession = { id, source: sessionSourceRef.current, videoName: name,
+      cues: [], hash: null, time: 0, selected: -1, rate, loop, showTrans, updatedAt: Date.now() };
+    sessionSnapshotRef.current = initial;
+    void saveLearningSession(initial, file).then(result => {
+      if (sessionIdRef.current === id) setSessionNotice(result.message);
+    });
     setCues([]);
     setSourceName(undefined);
     subHashRef.current = null;
@@ -302,6 +402,15 @@ function LearnInner() {
     if (!file) return;
     sampleRequestRef.current?.abort();
     setLoadingSample(false);
+    if (missingSession && matchesLearningVideo(missingSession.source, file)) {
+      const restored = { ...missingSession, cues, sourceName, hash: subHash, rate, loop, showTrans };
+      restoreLearning(restored, file);
+      setSessionLoading(false);
+      void saveLearningSession(restored, file).then(result => {
+        if (sessionIdRef.current === restored.id) setSessionNotice(result.message);
+      });
+      return;
+    }
     const url = URL.createObjectURL(file);
     setVideoSource(url, file.name, file);
     trackEvent('video_import');
@@ -315,6 +424,24 @@ function LearnInner() {
         '这个文件读不到内容（云盘占位 / 被占用 / 在网络盘上）。视频能播，但抽不了字幕——复制到本地硬盘再试。'
       );
     }
+  }
+
+  async function clearCurrentLearning() {
+    if (!window.confirm('清除当前浏览器保存的视频、字幕和这次播放进度？生词本和电脑里的原文件会保留。')) return;
+    restoreGenerationRef.current++;
+    sampleRequestRef.current?.abort(); videoRef.current?.pause();
+    if (subHashRef.current) clearProgress(subHashRef.current);
+    sessionIdRef.current = undefined; sessionSourceRef.current = undefined;
+    sessionSnapshotRef.current = null; sessionTimeRef.current = 0; restoreTimeRef.current = null;
+    subHashRef.current = null; cuesRef.current = [];
+    currentRef.current = selectedRef.current = loopCueRef.current = -1;
+    setVideoUrl(undefined); setVideoFile(undefined); setVideoName(undefined);
+    setCues([]); setSubHash(null); setSourceName(undefined); setResume(null);
+    setCurrent(-1); setSelected(-1); setPlaying(false); setMissingSession(null);
+    setLoadingSample(false); setSessionLoading(false); setSessionNotice(undefined);
+    setRate(1); setLoop(false); setShowTrans(true); setTracks(null); setNoTrack(false);
+    try { await clearLearningSession(); flash('已清除这次学习的本地记录'); }
+    catch { setSessionNotice('本地记录清理失败，请检查浏览器存储设置。'); }
   }
 
   function applySrt(text: string, label: string) {
@@ -691,8 +818,9 @@ function LearnInner() {
 
   const onTimeUpdate = useCallback(() => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || restoreTimeRef.current !== null || v.readyState < 1) return;
     const t = v.currentTime;
+    sessionTimeRef.current = t;
     const list = cuesRef.current;
 
     // 循环目标独立于实时高亮，避免跨过句尾时被下一句抢走。
@@ -722,9 +850,10 @@ function LearnInner() {
 
     // 每 5 秒记一次播放位置，下次打开同一份字幕能接着看
     const now = Date.now();
-    if (now - lastSaveRef.current > 5000 && subHashRef.current) {
+    if (now - lastSaveRef.current > 5000) {
       lastSaveRef.current = now;
-      saveProgress(subHashRef.current, {
+      flushSessionRef.current();
+      if (subHashRef.current) saveProgress(subHashRef.current, {
         time: t,
         cue: idx,
         duration: Number.isFinite(v.duration) ? v.duration : undefined,
@@ -920,7 +1049,7 @@ function LearnInner() {
     [cues]
   );
 
-  const title = fromWork?.title ?? (sourceName ? sourceName : '学习台');
+  const title = sourceName ?? videoName ?? fromWork?.title ?? '学习台';
 
   return (
     <div
@@ -980,6 +1109,9 @@ function LearnInner() {
               onPick={onSubFile}
               active={cues.length > 0 && !sourceName?.includes('演示')}
             />
+            {videoName && <button onClick={() => void clearCurrentLearning()}
+              title="清除浏览器保存的本次视频、字幕和进度，保留生词本与原文件"
+              className="btn btn-ghost !px-2.5 !py-1.5 !text-[12.5px]">清除记录</button>}
             <button
               onClick={() => loadSample()}
               disabled={loadingSample}
@@ -1084,6 +1216,12 @@ function LearnInner() {
           <span>{downloadImportError}</span><a href="/download" className="btn btn-ghost shrink-0">重新导入</a>
         </div>
       )}
+      {(sessionLoading || sessionNotice || missingSession) && (
+        <div role="status" className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-2 text-[12px] text-[var(--text-dim)]">
+          <span>{sessionLoading ? '正在恢复上次的学习…' : sessionNotice}</span>
+          {missingSession && <FileBtn label="选择原视频继续" accept="video/*" onPick={onVideoFile} />}
+        </div>
+      )}
       {(loadingSample || sampleError) && (
         <div role={sampleError ? 'alert' : 'status'} className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
           <span>{sampleError ?? '正在加载配套字幕，视频将边加载边播放…'}</span>
@@ -1156,12 +1294,21 @@ function LearnInner() {
                   onSeeking={onSeeking}
                   onSeeked={onTimeUpdate}
                   onLoadedMetadata={() => {
-                    if (videoRef.current) videoRef.current.playbackRate = rate;
+                    if (videoRef.current) {
+                      videoRef.current.playbackRate = rate;
+                      if (restoreTimeRef.current !== null) {
+                        const time = restoreTimeRef.current;
+                        videoRef.current.currentTime = Number.isFinite(videoRef.current.duration)
+                          ? Math.min(time, Math.max(0, videoRef.current.duration - 0.1)) : time;
+                        sessionTimeRef.current = videoRef.current.currentTime;
+                        restoreTimeRef.current = null;
+                      }
+                    }
                     onTimeUpdate();
                   }}
                   onEnded={onTimeUpdate}
                   onPlay={() => { setPlaying(true); trackEvent('learning_start'); }}
-                  onPause={() => setPlaying(false)}
+                  onPause={() => { setPlaying(false); onTimeUpdate(); flushSessionRef.current(); }}
                   onCanPlay={() => { setVideoStatus('ready'); setVideoError(undefined); }}
                   onWaiting={() => setVideoStatus('loading')}
                   onError={(event) => {
