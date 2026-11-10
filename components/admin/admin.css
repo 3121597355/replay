@@ -17,3 +17,4 @@ body:has([data-replay-admin]){background:#f8f7f4}body:has([data-replay-admin])>h
 @media(max-width:480px){.ra-code-row{align-items:flex-start;flex-direction:column;gap:8px}.ra-account-list{grid-template-columns:80px minmax(0,1fr)}}
 .ra-login-card .ra-primary{width:100%;justify-content:space-between;padding-block:14px}
 @media(prefers-reduced-motion:reduce){[data-replay-admin] *{transition:none!important}}
+.ra-grid-line,.ra-trend-line{vector-effect:non-scaling-stroke}@media(max-width:600px){.ra-trend-chart text{font-size:26px}}@media(max-width:480px){.ra-trend-chart text{font-size:32px}}
