@@ -1,4 +1,4 @@
-import { createEngagementTracker } from './engagement-tracker.mjs';
+import { engagementTrackerSource } from './engagement-tracker.mjs';
 // Shared by the local collector and the independently deployed public collector.
 export const trackerSource = String.raw`(() => {
   const script = document.currentScript;
@@ -28,7 +28,7 @@ export const trackerSource = String.raw`(() => {
       if (attempt < 2) setTimeout(() => send(body, attempt + 1), 800 * (attempt + 1));
     }
   }
-  const engagement = (${createEngagementTracker.toString()})({ id, send });
+  const engagement = (${engagementTrackerSource})({ id, send });
   function track() {
     if (document.visibilityState !== 'visible' || location.pathname === lastPath) return;
     engagement.finish('route');

@@ -5,7 +5,10 @@ import { readFileSync } from 'node:fs';
 import worker from '../services/analytics-collector/worker.mjs';
 import { passwordHash, sourceHost } from '../services/analytics-collector/admin.mjs';
 import vm from 'node:vm';
-import { trackerSource } from '../services/analytics-collector/tracker.mjs';
+import { trackerSource as unbundledTrackerSource } from '../services/analytics-collector/tracker.mjs';
+// The same browser lifecycle checks can exercise the exact Wrangler output.
+const trackerSource = process.env.REPLAY_TRACKER_BUNDLE_FILE
+  ? readFileSync(process.env.REPLAY_TRACKER_BUNDLE_FILE, 'utf8') : unbundledTrackerSource;
 
 const day = new Date(Date.now() + 28800000).toISOString().slice(0, 10);
 test('停留快照累计去重、乱序不覆盖状态，页面跳转不算网站离开', async () => {

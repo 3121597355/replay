@@ -1,5 +1,7 @@
-// Serialized into tracker.js. IDs live only in memory, never in cookies or storage.
-export function createEngagementTracker({ id, send }) {
+// Keep browser source literal: Worker bundlers may inject closure helpers into
+// function.toString(), which are unavailable in the separate tracker.js response.
+// IDs live only in memory, never in cookies or storage.
+export const engagementTrackerSource = String.raw`function createEngagementTracker({ id, send }) {
   if (id !== 'replay') return { start() {}, finish() {} };
   let current;
   let internalNavigationAt = -Infinity;
@@ -49,4 +51,4 @@ export function createEngagementTracker({ id, send }) {
     if (flag && !(current.flags & flag)) { current.flags |= flag; snapshot(current.state); }
   };
   return { start, finish };
-}
+}`;
