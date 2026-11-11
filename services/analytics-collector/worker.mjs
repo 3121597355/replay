@@ -1,6 +1,7 @@
 import { trackerSource } from "./tracker.mjs";
 import { adminRoute, deviceInfo, EVENT_LABELS, settings, sourceHost } from './admin.mjs';
 import { saveEngagement, validEngagement } from './engagement.mjs';
+import { saveTraffic, validSession } from './traffic.mjs';
 
 const day = (time = Date.now()) => new Date(time + 28800000).toISOString().slice(0, 10);
 const offset = (date, n) => new Date(Date.parse(date) + n * 86400000).toISOString().slice(0, 10);
@@ -72,6 +73,7 @@ export default {
         if (body.type !== undefined && !['event', 'engagement'].includes(body.type)) return json({ error: '无效事件类型' }, 400);
         if (body.type === 'event' && !Object.hasOwn(EVENT_LABELS, body.name)) return json({ error: '未知功能事件' }, 400);
         if (body.type === 'engagement' && !validEngagement(body)) return json({ error: '无效停留快照' }, 400);
+        if (body.sessionId !== undefined && !validSession(body)) return json({ error: '无效访问关联' }, 400);
         const ip = request.headers.get("CF-Connecting-IP");
         if (!ip || !env.RATE_LIMITER) return json({ error: "采集环境未就绪" }, 503);
         const d = day();
@@ -80,9 +82,12 @@ export default {
         if (!(await env.RATE_LIMITER.limit({ key: rateKey })).success)
           return new Response(null, { status: 429, headers: { ...cors, "Retry-After": "60" } });
         const now = new Date().toISOString(), path = body.path.split(/[?#]/)[0];
+        const info = deviceInfo(request.headers.get('User-Agent') || ''), referrer = sourceHost(body.referrer);
+        const trafficVisitor = body.sessionId ? await hmac(env.VISITOR_SALT, `traffic-v1|${body.id}|${ip}|${(request.headers.get('User-Agent') || '').slice(0, 300)}`) : '';
         if (body.type === 'engagement') {
           if (body.id !== 'replay' || !(await settings(env, body.id)).eventsEnabled) return new Response(null, { status: 204, headers: cors });
           await saveEngagement(env, body, path, now, deviceInfo(request.headers.get('User-Agent') || ''), sourceHost(body.referrer));
+          await saveTraffic(env, body, path, now, trafficVisitor, info, referrer);
           return new Response(null, { status: 204, headers: cors });
         }
         if (body.type === 'event') {
@@ -90,13 +95,12 @@ export default {
           await env.DB.prepare('INSERT OR IGNORE INTO product_events(site_id,event_id,day,visitor,name,path,received_at) VALUES (?,?,?,?,?,?,?)').bind(body.id, body.eventId, d, visitor, body.name, path, now).run();
           return new Response(null, { status: 204, headers: cors });
         }
-        const info = deviceInfo(request.headers.get('User-Agent') || '');
-        const referrer = sourceHost(body.referrer);
         await env.DB.batch([
           env.DB.prepare("INSERT OR IGNORE INTO visits(site_id,event_id,day,visitor,path,received_at) VALUES (?,?,?,?,?,?)").bind(body.id, body.eventId, d, visitor, path, now),
           env.DB.prepare("INSERT INTO site_state(site_id,first_seen,last_seen) VALUES (?,?,?) ON CONFLICT(site_id) DO UPDATE SET last_seen=excluded.last_seen").bind(body.id, now, now),
           env.DB.prepare('INSERT OR IGNORE INTO visit_metadata(site_id,event_id,day,device,browser,referrer) VALUES (?,?,?,?,?,?)').bind(body.id, body.eventId, d, info.device, info.browser, referrer),
         ]);
+        await saveTraffic(env, body, path, now, trafficVisitor, info, referrer);
         return new Response(null, { status: 204, headers: cors });
       }
       const match = /^\/v1\/websites\/([\w-]{1,100})\/(status|data)$/.exec(url.pathname);
@@ -131,5 +135,6 @@ export default {
     await env.DB.prepare('DELETE FROM visit_metadata WHERE day < ?').bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM product_events WHERE day < ?').bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM page_engagement WHERE updated_at < ?').bind(offset(day(), -399)).run();
+    await env.DB.prepare('DELETE FROM traffic_pages WHERE updated_at < ?').bind(offset(day(), -399)).run();
   },
 };

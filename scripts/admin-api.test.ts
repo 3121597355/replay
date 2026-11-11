@@ -53,3 +53,21 @@ test('停留统计分项需要只读鉴权，JSON和CSV正确映射且受导出�
     assert.equal((await stats(request('engagement-pages', 'csv'), { params: { resource: 'engagement-pages' } })).status, 403);
   } finally { global.fetch = original; }
 });
+
+test('访问质量资源映射、新口径元数据、空时长与CSV权限保持一致', async () => {
+  const original = global.fetch;
+  const req = (resource: string, csv = false) => new NextRequest(`https://www.replayen.com/api/stats/v1/${resource}${csv ? '?format=csv' : ''}`, { headers: { Authorization: 'Bearer rps_' + 'a'.repeat(64) } });
+  const traffic = { summary: { visitors: 2, sessions: 3, pageviews: 5, bounceRate: null, averageSeconds: null }, points: [{ date: '2026-11-11', visitors: 2, sessions: 3 }], entries: [{ path: '/learn', sessions: 3 }], sources: [{ name: 'direct', sessions: 3 }], coverageStart: '2026-11-11', definitions: { visitors: '区间匿名去重' } };
+  try {
+    global.fetch = async () => Response.json({ siteId: 'replay', timezone: 'Asia/Shanghai', coverageStart: '2026-11-01', definitions: { visitors: '旧每日估算' }, traffic, capabilities: { exportsEnabled: true } });
+    for (const [name, value] of Object.entries({ traffic, 'traffic-summary': traffic.summary, 'traffic-timeseries': traffic.points, 'traffic-entries': traffic.entries, 'traffic-sources': traffic.sources })) {
+      const result = await stats(req(name), { params: { resource: name } }); const body = await result.json();
+      assert.deepEqual(body.data, value); assert.equal(body.coverageStart, traffic.coverageStart); assert.deepEqual(body.definitions, traffic.definitions);
+      assert.equal((await stats(new NextRequest(`https://www.replayen.com/api/stats/v1/${name}`), { params: { resource: name } })).status, 401);
+    }
+    assert.match(await (await stats(req('traffic-summary', true), { params: { resource: 'traffic-summary' } })).text(), /"2","3","5","",""/);
+    assert.equal((await stats(req('traffic', true), { params: { resource: 'traffic' } })).status, 400);
+    global.fetch = async () => Response.json({ traffic, capabilities: { exportsEnabled: false } });
+    assert.equal((await stats(req('traffic-entries', true), { params: { resource: 'traffic-entries' } })).status, 403);
+  } finally { global.fetch = original; }
+});

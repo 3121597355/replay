@@ -28,20 +28,50 @@ export const trackerSource = String.raw`(() => {
       if (attempt < 2) setTimeout(() => send(body, attempt + 1), 800 * (attempt + 1));
     }
   }
-  const engagement = (${engagementTrackerSource})({ id, send });
-  function track() {
-    if (document.visibilityState !== 'visible' || location.pathname === lastPath) return;
-    engagement.finish('route');
+  const storageKey = 'replay:traffic-session:v1';
+  let session;
+  function refreshSession() { if (id === 'replay') try {
+    const stored = JSON.parse(sessionStorage.getItem(storageKey));
+    if (/^[\w-]{16,80}$/.test(stored?.id || '') && Number.isInteger(stored.pageIndex) && stored.pageIndex >= 0
+      && stored.pageIndex < 100000 && Number.isFinite(stored.lastActivity) && stored.lastActivity <= Date.now()) session = stored;
+  } catch {} }
+  refreshSession();
+  const expired = () => !session || Date.now() - session.lastActivity >= 1800000 || session.pageIndex >= 100000;
+  function touch() {
+    if (!session || id !== 'replay') return;
+    session.lastActivity = Date.now();
+    try { sessionStorage.setItem(storageKey, JSON.stringify(session)); } catch {}
+  }
+  function association() {
+    if (id !== 'replay') return {};
+    if (expired()) session = { id: eventId(), lastActivity: Date.now(), pageIndex: 0 };
+    session.pageIndex++; touch();
+    return { sessionId: session.id, pageIndex: session.pageIndex, activityIndex: session.pageIndex };
+  }
+  const engagement = (${engagementTrackerSource})({ id, send, touch, restore: linked => {
+    session.pageIndex++; touch(); linked.activityIndex = session.pageIndex;
+  }, ensureFresh: linked => {
+    refreshSession();
+    if (document.visibilityState === 'visible' && (expired() || (linked && linked.sessionId !== session?.id))) { track(true); return true; }
+    return false;
+  } });
+  function track(force = false) {
+    if (document.visibilityState !== 'visible' || (!force && location.pathname === lastPath)) return;
+    refreshSession();
+    const rotate = id === 'replay' && session && expired();
+    engagement.finish(rotate || force ? 'left' : 'route');
+    if (rotate) session = undefined;
     lastPath = location.pathname;
     if (/^\/(admin|api)(\/|$)/.test(lastPath)) return;
     // Only the path is sent. Query strings, fragments, titles and user content stay local.
     let referrer = ''; try { referrer = new URL(document.referrer).origin; } catch {}
     const visitId = eventId();
-    void send(JSON.stringify({ id, eventId: visitId, path: lastPath.slice(0, 300), referrer }));
-    engagement.start(visitId, lastPath.slice(0, 300));
+    const linked = association();
+    void send(JSON.stringify({ id, eventId: visitId, path: lastPath.slice(0, 300), referrer, ...linked }));
+    engagement.start(visitId, lastPath.slice(0, 300), linked);
   }
-  document.addEventListener('visibilitychange', track);
-  addEventListener('popstate', track);
+  document.addEventListener('visibilitychange', () => track());
+  addEventListener('popstate', () => track());
   addEventListener('pageshow', () => track());
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];

@@ -172,3 +172,82 @@ test('管理员修改密码需验证旧密码，持久化摘要并使全部旧�
   assert.ok(!stored.includes(body.password)); assert.equal(JSON.parse(stored).sessionVersion, 1);
   f.db.close();
 });
+
+test('访问质量按会话聚合：跨页不增加访问、跨日访客去重、单页学习不跳出、丢包不伪造时长', async () => {
+  const f = await fixture(), admin = await f.login();
+  const read = async (start = day) => (await (await f.call(`/v1/websites/replay/admin/report?start=${start}&end=${day}`, 'GET', undefined, admin)).json()).traffic;
+  assert.equal((await read()).summary.averageSeconds, null);
+  const pv = (session, page, path = '/') => ({ id: 'replay', sessionId: `session-quality-${session}`, pageIndex: page, eventId: `page-quality-${session}-${page}`, path });
+  const beat = (body, ms, state = 'left', flags = 0, sequence = 1, activityIndex = body.pageIndex) => ({ ...body, type: 'engagement', sequence, activeMs: ms, state, flags, activityIndex });
+  const a = pv('0001', 1), a2 = pv('0001', 2, '/learn'), b = pv('0002', 1, '/learn'), c = pv('0003', 1), d = pv('0004', 1, '/learn'), lost = pv('lost', 1);
+  for (const body of [a, a, a2, b, c, d, lost]) assert.equal((await f.call('/collect', 'POST', body)).status, 204);
+  for (const body of [beat(a, 5000, 'route'), beat(a2, 15000), beat(b, 60000), beat(c, 5000), beat(d, 3000, 'left', 2)]) await f.call('/collect', 'POST', body);
+  // A delayed old-page leave cannot close a newer active page or change association.
+  await f.call('/collect', 'POST', beat(a, 5000, 'left', 0, 2));
+  await f.call('/collect', 'POST', { ...beat(a, 6000, 'left', 0, 3), sessionId: 'session-quality-other' });
+  assert.equal(f.db.prepare('SELECT session_id FROM traffic_pages WHERE event_id=?').get(a.eventId).session_id, a.sessionId);
+  f.db.prepare('UPDATE traffic_pages SET updated_at=?').run(new Date(Date.now() - 31 * 60000).toISOString());
+  const s = (await read()).summary;
+  assert.equal(s.visitors, 1); assert.equal(s.sessions, 5); assert.equal(s.pageviews, 6);
+  assert.equal(s.completedSessions, 5); assert.equal(s.measuredSessions, 4); assert.equal(s.bounces, 1);
+  assert.equal(s.bounceRate, 25); assert.equal(s.averageSeconds, 22); // (20 + 60 + 5 + 3)/4, not a page average.
+  // Recover an active session: no longer included in the completed denominator.
+  await f.call('/collect', 'POST', beat(a2, 16000, 'active', 0, 2));
+  assert.equal((await read()).summary.completedSessions, 4);
+  // BFCache return to an older page updates navigation order without adding a PV.
+  await f.call('/collect', 'POST', beat(a, 7000, 'active', 0, 4, 3));
+  assert.equal((await read()).summary.pageviews, 6);
+  assert.equal((await read()).summary.completedSessions, 4);
+  // Heartbeat arriving first is not a PV; duplicate PV later promotes exactly once.
+  const hbFirst = pv('0005', 1);
+  await f.call('/collect', 'POST', beat(hbFirst, 2000));
+  assert.equal((await read()).summary.sessions, 5);
+  await f.call('/collect', 'POST', hbFirst); await f.call('/collect', 'POST', hbFirst);
+  assert.equal((await read()).summary.pageviews, 7);
+  const yesterday = new Date(Date.parse(day) - 86400000).toISOString().slice(0, 10);
+  f.db.prepare('UPDATE traffic_pages SET started_at=? WHERE session_id=?').run(`${yesterday}T00:00:00.000Z`, b.sessionId);
+  const crossDay = await read(yesterday);
+  assert.equal(crossDay.summary.visitors, 1); assert.equal(crossDay.points.reduce((n, p) => n + p.visitors, 0), 2);
+  assert.equal(crossDay.entries.find(p => p.path === '/learn').sessions, 2);
+  const visitor = f.db.prepare('SELECT visitor FROM traffic_pages LIMIT 1').get().visitor;
+  assert.match(visitor, /^[a-f0-9]{64}$/); assert.ok(!JSON.stringify(crossDay).includes('192.0.2.1'));
+  const before = (await read(yesterday)).summary.sessions;
+  await f.call('/collect', 'POST', { ...pv('admin', 1), path: '/admin' });
+  assert.equal((await read(yesterday)).summary.sessions, before);
+  assert.equal((await f.call('/collect', 'POST', { ...a, pageIndex: 0 })).status, 400);
+  assert.equal((await f.call('/collect', 'POST', { ...a, activityIndex: -1 })).status, 400);
+  f.db.close();
+});
+
+test('真实追踪脚本：刷新/跨页沿用会话，30分钟后台恢复新会话，存储不可用不阻塞', () => {
+  let time = Date.now(); const stored = new Map();
+  function browser(path, unavailable = false) {
+    const sent = [], timers = [], doc = {}, win = {};
+    const document = { currentScript: { dataset: { websiteId: 'replay' }, src: 'https://collector.example/tracker.js' }, visibilityState: 'visible', referrer: '', addEventListener: (n, fn) => (doc[n] ||= []).push(fn) };
+    const context = { document, window: {}, location: { pathname: path, origin: 'https://www.replayen.com' }, crypto, URL, performance: { now: () => time }, Date: class extends Date { static now() { return time; } },
+      sessionStorage: { getItem: k => { if (unavailable) throw Error('disabled'); return stored.get(k) || null; }, setItem: (k, v) => { if (unavailable) throw Error('disabled'); stored.set(k, v); } },
+      navigator: { sendBeacon: (_u, blob) => { sent.push(blob); return true; } }, Blob: class { constructor(parts) { Object.assign(this, JSON.parse(parts[0])); } },
+      fetch: async (_u, options) => { sent.push(JSON.parse(options.body)); return { status: 204 }; }, setInterval: fn => timers.push(fn), setTimeout() {}, addEventListener: (n, fn) => (win[n] ||= []).push(fn), history: { pushState() {}, replaceState() {} } };
+    vm.runInNewContext(trackerSource, context);
+    return { context, sent, timers, emit: (scope, name, event = {}) => (scope === 'doc' ? doc : win)[name]?.forEach(fn => fn(event)), pv: () => sent.filter(b => !b.type) };
+  }
+  const first = browser('/'); const session = first.pv()[0].sessionId;
+  time += 5000; first.emit('win', 'pagehide');
+  const second = browser('/learn'); assert.equal(second.pv()[0].sessionId, session); assert.equal(second.pv()[0].pageIndex, 2);
+  const refresh = browser('/learn'); assert.equal(refresh.pv()[0].sessionId, session); assert.equal(refresh.pv()[0].pageIndex, 3);
+  refresh.context.document.visibilityState = 'hidden'; refresh.emit('doc', 'visibilitychange');
+  time += 31 * 60000;
+  refresh.context.document.visibilityState = 'visible'; refresh.emit('doc', 'visibilitychange');
+  assert.equal(refresh.pv().length, 2); assert.notEqual(refresh.pv()[1].sessionId, session); assert.equal(refresh.pv()[1].pageIndex, 1);
+  assert.equal(refresh.sent.at(-1).activeMs, 0);
+  // Returning an older BFCache page joins the current session rather than reviving an expired one.
+  first.emit('win', 'pageshow', { persisted: true });
+  assert.equal(first.pv().length, 2); assert.equal(first.pv()[1].sessionId, refresh.pv()[1].sessionId);
+  const freshId = first.pv()[1].eventId;
+  first.emit('win', 'pagehide'); first.emit('win', 'pageshow', { persisted: true });
+  assert.equal(first.pv().length, 2); assert.equal(first.sent.at(-1).eventId, freshId);
+  const offline = browser('/', true); time += 15000; offline.timers.forEach(fn => fn());
+  assert.equal(offline.pv().length, 1); assert.equal(offline.sent.at(-1).activeMs, 15000);
+  offline.context.location.pathname = '/admin'; offline.context.history.pushState(); const count = offline.sent.length;
+  time += 31 * 60000; offline.timers.forEach(fn => fn()); assert.equal(offline.sent.length, count);
+});

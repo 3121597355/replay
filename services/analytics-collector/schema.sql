@@ -54,3 +54,26 @@ CREATE TABLE IF NOT EXISTS page_engagement (
   PRIMARY KEY (site_id,visit_id)
 );
 CREATE INDEX IF NOT EXISTS engagement_updated ON page_engagement(site_id,updated_at);
+CREATE TABLE IF NOT EXISTS traffic_pages (
+  site_id TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  page_index INTEGER NOT NULL,
+  activity_index INTEGER NOT NULL,
+  visitor TEXT NOT NULL,
+  path TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  sequence INTEGER NOT NULL,
+  active_ms INTEGER NOT NULL,
+  state TEXT NOT NULL,
+  flags INTEGER NOT NULL,
+  has_view INTEGER NOT NULL,
+  has_snapshot INTEGER NOT NULL,
+  device TEXT NOT NULL,
+  referrer TEXT NOT NULL,
+  PRIMARY KEY (site_id,event_id),
+  UNIQUE (site_id,session_id,page_index)
+);
+CREATE INDEX IF NOT EXISTS traffic_session ON traffic_pages(site_id,session_id,page_index);
+CREATE INDEX IF NOT EXISTS traffic_retention ON traffic_pages(updated_at);
