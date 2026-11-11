@@ -59,7 +59,7 @@ test('暂时切后台不判离开，超时推断与恢复修正，小时按北�
 test('真实追踪脚本：前台累计、后台不计时、BFCache不重复PV、功能归属与离页信号', () => {
   let time = 0; const sent = [], timers = [], docListeners = {}, winListeners = {};
   const document = { currentScript: { dataset: { websiteId: 'replay' }, src: 'https://collector.example/tracker.js' }, visibilityState: 'visible', referrer: 'https://www.xiaohongshu.com/post?secret=1', addEventListener: (name, fn) => (docListeners[name] ||= []).push(fn) };
-  const location = { pathname: '/learn' }, window = {};
+  const location = { pathname: '/learn', origin: 'https://www.replayen.com' }, window = {};
   const context = { document, location, window, performance: { now: () => time }, crypto, URL, Blob,
     navigator: { sendBeacon: (_url, blob) => { sent.push(blob); return true; } },
     fetch: async (_url, options) => { sent.push(JSON.parse(options.body)); return { status: 204 }; },
@@ -83,6 +83,8 @@ test('真实追踪脚本：前台累计、后台不计时、BFCache不重复PV�
   assert.equal(sent.filter(row => row.type === undefined).length, 1);
   location.pathname = '/download'; context.history.pushState({}, '', '/download');
   assert.equal(sent.at(-3).state, 'route'); assert.equal(sent.filter(row => row.type === undefined).length, 2);
+  emitWin('click', { button: 0, target: { closest: () => ({ href: 'https://www.replayen.com/', target: '', hasAttribute: () => false }) } });
+  emitWin('pagehide'); assert.equal(sent.at(-1).state, 'route');
   location.pathname = '/admin'; context.history.pushState({}, '', '/admin'); const count = sent.length;
   timers.forEach(fn => fn()); window.__replayEngagementRecord('word_save'); assert.equal(sent.length, count);
   assert.ok(sent.every(row => !JSON.stringify(row).includes('secret=1')));

@@ -2,6 +2,7 @@
 export function createEngagementTracker({ id, send }) {
   if (id !== 'replay') return { start() {}, finish() {} };
   let current;
+  let internalNavigationAt = -Infinity;
   const clock = () => performance.now();
   function tick() {
     if (!current) return;
@@ -17,6 +18,7 @@ export function createEngagementTracker({ id, send }) {
       state, flags: current.flags, referrer: current.referrer }), 0, final);
   }
   function start(visitId, path) {
+    internalNavigationAt = -Infinity;
     let referrer = ''; try { referrer = new URL(document.referrer).origin; } catch {}
     current = { id: visitId, path, referrer, activeMs: 0, flags: 0, sequence: 0, tick: clock(), state: 'active' };
     snapshot('active');
@@ -26,10 +28,16 @@ export function createEngagementTracker({ id, send }) {
     if (!current || current.state === 'left' || current.state === 'route') return;
     snapshot(document.visibilityState === 'visible' ? 'active' : 'hidden', document.visibilityState !== 'visible');
   });
-  addEventListener('pagehide', () => snapshot('left', true));
+  addEventListener('click', event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = event.target?.closest?.('a[href]');
+    if (!anchor || anchor.hasAttribute('download') || (anchor.target && anchor.target !== '_self')) return;
+    try { const url = new URL(anchor.href); if (url.origin === location.origin && url.pathname !== location.pathname) internalNavigationAt = clock(); } catch {}
+  });
+  addEventListener('pagehide', () => snapshot(clock() - internalNavigationAt < 5000 ? 'route' : 'left', true));
   addEventListener('pageshow', event => {
     // BFCache restores the same page visit and continues its duration, without a new PV.
-    if (event.persisted && current) snapshot(document.visibilityState === 'visible' ? 'active' : 'hidden');
+    if (event.persisted && current) { internalNavigationAt = -Infinity; snapshot(document.visibilityState === 'visible' ? 'active' : 'hidden'); }
   });
   setInterval(() => { if (current?.state === 'active' && document.visibilityState === 'visible') snapshot('active'); }, 15000);
   window.__replayEngagementRecord = name => {
