@@ -251,3 +251,21 @@ test('真实追踪脚本：刷新/跨页沿用会话，30分钟后台恢复新�
   offline.context.location.pathname = '/admin'; offline.context.history.pushState(); const count = offline.sent.length;
   time += 31 * 60000; offline.timers.forEach(fn => fn()); assert.equal(offline.sent.length, count);
 });
+
+test('共享采集器：会话指标与地域、UTM及一览分析数据同时保留', async () => {
+  const f = await fixture();
+  const body = { id: 'replay', eventId: 'shared-session-page-0001', sessionId: 'shared-session-id-0001', pageIndex: 1, path: '/learn', referrer: 'https://www.xiaohongshu.com/post', utm: { source: 'xiaohongshu', campaign: 'replay-demo' } };
+  const request = new Request('https://collector.example/collect', { method: 'POST', headers: { Origin: 'https://www.replayen.com', 'CF-Connecting-IP': '192.0.2.1', 'User-Agent': 'Mozilla/5.0 Windows Chrome/140.0' }, body: JSON.stringify(body) });
+  Object.defineProperty(request, 'cf', { value: { country: 'CN', regionCode: 'GD' } });
+  assert.equal((await worker.fetch(request, f.env)).status, 204);
+  await f.call('/collect', 'POST', { ...body, type: 'engagement', sequence: 1, activeMs: 45000, state: 'left', flags: 2 });
+  const data = await (await f.call(`/v1/websites/replay/data?start=${day}&end=${day}`, 'GET', undefined, f.env.READ_TOKEN)).json();
+  assert.equal(data.geoVersion, 1); assert.equal(data.analysisVersion, 1);
+  assert.equal(data.regions[0].province, '440000'); assert.equal(data.campaigns[0].source, 'xiaohongshu');
+  assert.equal(data.dimensions.find(row => row.type === 'os').name, 'Windows'); assert.equal(data.engagement[0].activeMs, 45000);
+  const admin = await f.login(); const report = await (await f.call('/v1/websites/replay/admin/report', 'GET', undefined, admin)).json();
+  assert.equal(report.traffic.summary.sessions, 1); assert.equal(report.traffic.summary.pageviews, 1);
+  assert.equal(report.traffic.summary.visitors, 1); assert.equal(report.summary.pageviews, 1);
+  assert.equal(report.engagement.summary.completedViews, 1); assert.equal(JSON.stringify(data).includes('192.0.2.1'), false);
+  f.db.close();
+});

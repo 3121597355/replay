@@ -63,11 +63,15 @@ export const trackerSource = String.raw`(() => {
     if (rotate) session = undefined;
     lastPath = location.pathname;
     if (/^\/(admin|api)(\/|$)/.test(lastPath)) return;
-    // Only the path is sent. Query strings, fragments, titles and user content stay local.
+    // Only three explicit campaign labels are accepted; arbitrary query strings stay local.
+    const utm = {};
+    try { const params = new URL(location.href || location.origin + location.pathname).searchParams;
+      for (const name of ['source', 'medium', 'campaign']) { const value = params.get('utm_' + name); if (value && /^[\p{L}\p{N} ._\-]{1,100}$/u.test(value)) utm[name] = value; }
+    } catch {}
     let referrer = ''; try { referrer = new URL(document.referrer).origin; } catch {}
     const visitId = eventId();
     const linked = association();
-    void send(JSON.stringify({ id, eventId: visitId, path: lastPath.slice(0, 300), referrer, ...linked }));
+    void send(JSON.stringify({ id, eventId: visitId, path: lastPath.slice(0, 300), referrer, utm, ...linked }));
     engagement.start(visitId, lastPath.slice(0, 300), linked);
   }
   document.addEventListener('visibilitychange', () => track());

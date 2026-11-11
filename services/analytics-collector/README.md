@@ -45,3 +45,9 @@
 report.traffic 提供 summary、points、entries、sources、firstSeen、coverageStart 和 definitions。独立只读 API 新增 traffic（完整 JSON）、traffic-summary、traffic-timeseries、traffic-entries、traffic-sources；分项支持 CSV，仍受鉴权和导出开关限制。无时长样本返回 null；页面显示 —。旧历史无法补算会话，单独保留，不能与新会话访客混用。停留快照受 eventsEnabled 设置控制，关闭后基础 PV/会话仍记录，缺失的时长不进入分母。
 
 浏览器源代码采用字符串字面量，禁止通过函数 toString 注入（Wrangler 会引入不可用的闭包辅助函数）。发布必须在 Wrangler dry-run 后从实际打包 Worker 获取 tracker.js，使用 REPLAY_TRACKER_BUNDLE_FILE 跑生命周期测试。
+
+# 共享服务兼容说明（2026-11-11）
+
+本目录与 `C:\Users\Administrator\Documents\ChatGPT\数据管理分析网站\collector` 使用同一个 `yilan-collector` Worker 和 `yilan-analytics` D1。已将一览省份采集与本目录完整后台、功能事件、来源设备及停留统计合并，模块和 schema 保持一致。双方部署前须同步完整模块并运行两边采集器测试，禁止使用只含 PV 的旧 Worker 覆盖后台登录接口；反向发布也须保留 `visit_geo` 与私有 API 的 `regions` / `geoVersion: 1`。
+
+统一发布流程及本轮回归证据见一览 `docs/shared-collector.md`。修复版 `6940469b-d55b-477b-aaf4-b339145e46c5`；保留云端密码、密钥与原有统计，不需重置账户。

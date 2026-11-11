@@ -77,3 +77,14 @@ CREATE TABLE IF NOT EXISTS traffic_pages (
 );
 CREATE INDEX IF NOT EXISTS traffic_session ON traffic_pages(site_id,session_id,page_index);
 CREATE INDEX IF NOT EXISTS traffic_retention ON traffic_pages(updated_at);
+
+
+CREATE TABLE IF NOT EXISTS visit_geo (
+  site_id TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  country TEXT NOT NULL,
+  province TEXT NOT NULL,
+  PRIMARY KEY(site_id,event_id)
+);
+
+CREATE TABLE IF NOT EXISTS visit_environment (site_id TEXT NOT NULL,event_id TEXT NOT NULL,os TEXT NOT NULL,source TEXT NOT NULL,medium TEXT NOT NULL,campaign TEXT NOT NULL,PRIMARY KEY(site_id,event_id));

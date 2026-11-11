@@ -1,4 +1,6 @@
 import { trackerSource } from "./tracker.mjs";
+import { requestRegion } from "./geo.mjs";
+import { analysisData, operatingSystem, campaign } from "./analysis.mjs";
 import { adminRoute, deviceInfo, EVENT_LABELS, settings, sourceHost } from './admin.mjs';
 import { saveEngagement, validEngagement } from './engagement.mjs';
 import { saveTraffic, validSession } from './traffic.mjs';
@@ -95,8 +97,11 @@ export default {
           await env.DB.prepare('INSERT OR IGNORE INTO product_events(site_id,event_id,day,visitor,name,path,received_at) VALUES (?,?,?,?,?,?,?)').bind(body.id, body.eventId, d, visitor, body.name, path, now).run();
           return new Response(null, { status: 204, headers: cors });
         }
+        const geo = requestRegion(request.cf), utm = campaign(body.utm);
         await env.DB.batch([
           env.DB.prepare("INSERT OR IGNORE INTO visits(site_id,event_id,day,visitor,path,received_at) VALUES (?,?,?,?,?,?)").bind(body.id, body.eventId, d, visitor, path, now),
+          env.DB.prepare("INSERT OR IGNORE INTO visit_geo(site_id,event_id,country,province) SELECT site_id,event_id,?,? FROM visits WHERE site_id=? AND event_id=? AND received_at=?").bind(geo.country,geo.province,body.id,body.eventId,now),
+          env.DB.prepare("INSERT OR IGNORE INTO visit_environment(site_id,event_id,os,source,medium,campaign) SELECT site_id,event_id,?,?,?,? FROM visits WHERE site_id=? AND event_id=? AND received_at=?").bind(operatingSystem(request.headers.get("User-Agent")||""),utm.source||"",utm.medium||"",utm.campaign||"",body.id,body.eventId,now),
           env.DB.prepare("INSERT INTO site_state(site_id,first_seen,last_seen) VALUES (?,?,?) ON CONFLICT(site_id) DO UPDATE SET last_seen=excluded.last_seen").bind(body.id, now, now),
           env.DB.prepare('INSERT OR IGNORE INTO visit_metadata(site_id,event_id,day,device,browser,referrer) VALUES (?,?,?,?,?,?)').bind(body.id, body.eventId, d, info.device, info.browser, referrer),
         ]);
@@ -115,22 +120,25 @@ export default {
       const start = url.searchParams.get("start"), end = url.searchParams.get("end");
       if (!validDay(start) || !validDay(end) || start > end || end > day() || (Date.parse(end) - Date.parse(start)) / 86400000 >= 90)
         return json({ error: "请选择不超过 90 天且不晚于今天的范围" }, 400);
-      const [daily, pages] = await env.DB.batch([
+      const [daily, pages, regions] = await env.DB.batch([
         env.DB.prepare("SELECT day AS date,count(*) AS pageviews,count(DISTINCT visitor) AS visitors FROM visits WHERE site_id=? AND day>=? AND day<=? GROUP BY day ORDER BY day").bind(id, start, end),
         env.DB.prepare("SELECT day AS date,path,count(*) AS views FROM visits WHERE site_id=? AND day>=? AND day<=? GROUP BY day,path ORDER BY day,path LIMIT 10001").bind(id, start, end),
+        env.DB.prepare("SELECT v.day AS date,g.country,g.province,count(*) AS views,count(DISTINCT v.visitor) AS visitors FROM visits v JOIN visit_geo g ON g.site_id=v.site_id AND g.event_id=v.event_id WHERE v.site_id=? AND v.day>=? AND v.day<=? GROUP BY v.day,g.country,g.province ORDER BY v.day,g.country,g.province LIMIT 10001").bind(id,start,end),
       ]);
-      if (pages.results.length > 10000) return json({ error: "页面数据量较大，请缩短同步范围" }, 413);
+      if (pages.results.length > 10000 || regions.results.length > 10000) return json({ error: "页面数据量较大，请缩短同步范围" }, 413);
       const byDate = new Map(daily.results.map(row => [row.date, row]));
       const points = [];
       if (coverageStart) for (let date = start; date <= end; date = offset(date, 1)) {
         if (date >= coverageStart) points.push(byDate.get(date) || { date, pageviews: 0, visitors: 0 });
       }
-      return json({ ...meta, points, pages: pages.results });
+      return json({ ...meta, points, pages: pages.results, regions: regions.results, geoVersion: 1, ...await analysisData(env,id,start,end) });
     } catch {
       return json({ error: "采集服务暂时不可用，请检查数据库初始化与服务配置" }, 503);
     }
   },
   async scheduled(_event, env) {
+    await env.DB.prepare("DELETE FROM visit_environment WHERE EXISTS (SELECT 1 FROM visits v WHERE v.site_id=visit_environment.site_id AND v.event_id=visit_environment.event_id AND v.day<?)").bind(offset(day(), -399)).run();
+    await env.DB.prepare("DELETE FROM visit_geo WHERE EXISTS (SELECT 1 FROM visits v WHERE v.site_id=visit_geo.site_id AND v.event_id=visit_geo.event_id AND v.day<?)").bind(offset(day(), -399)).run();
     await env.DB.prepare("DELETE FROM visits WHERE day < ?").bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM visit_metadata WHERE day < ?').bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM product_events WHERE day < ?').bind(offset(day(), -399)).run();
