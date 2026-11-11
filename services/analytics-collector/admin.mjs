@@ -1,3 +1,4 @@
+import { engagementReport } from './engagement.mjs';
 export const EVENT_LABELS = {
   sample_ready: '试学素材就绪', video_import: '导入本地视频', subtitle_import: '导入字幕',
   learning_start: '开始播放学习', word_lookup: '点词查询', word_save: '收藏生词',
@@ -86,6 +87,7 @@ async function report(env, id, dates) {
   return { schemaVersion: 1, siteId: id, timezone: 'Asia/Shanghai', ...dates, coverageStart, firstSeen: state?.first_seen || null, lastReceivedAt: state?.last_seen || null, generatedAt: new Date().toISOString(),
     summary: { pageviews, visitorDays, events: events.reduce((sum, e) => sum + e.count, 0), learningVisitorDays },
     points, pages: rows[1].results, pagesTruncated: rows[1].results.length === 1000, events, eventPoints: rows[3].results, devices: rows[4].results, browsers: rows[5].results, referrers: rows[6].results,
+    engagement: await engagementReport(env, id, dates),
     definitions: { pageviews: '页面浏览次数；功能事件不计入 PV', visitors: '站点、日期、IP/UA 的匿名摘要，同日去重估算，不跨日识别', visitorDays: '区间内每日访客估算之和，不等于跨日去重人数', learningVisitorDays: '导入视频、下载导入或试学素材就绪的每日去重访客之和；不代表完成学习', dimensions: '来源与设备从升级后开始采集，历史访问不补造分布' } };
 }
 export async function adminRoute(request, env, id, action) {

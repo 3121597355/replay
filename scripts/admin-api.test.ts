@@ -33,3 +33,23 @@ test('统计密钥只在请求头接受，查询参数与管理员会话不能�
     const csv = await stats(new NextRequest('https://www.replayen.com/api/stats/v1/summary?format=csv', { headers: { Authorization: 'Bearer rps_' + 'a'.repeat(64) } }), { params: { resource: 'summary' } }); assert.equal(csv.status, 403);
   } finally { global.fetch = original; }
 });
+test('停留统计分项需要只读鉴权，JSON和CSV正确映射且受导出开关限制', async () => {
+  const original = global.fetch;
+  const token = 'rps_' + 'a'.repeat(64);
+  const request = (name: string, format = '') => new NextRequest(`https://www.replayen.com/api/stats/v1/${name}${format ? '?format=' + format : ''}`, { headers: { Authorization: 'Bearer ' + token } });
+  try {
+    const schema = await (await stats(new NextRequest('https://www.replayen.com/api/stats/v1/schema'), { params: { resource: 'schema' } })).json();
+    assert.ok(schema.resources.includes('engagement-hours'));
+    assert.equal((await stats(new NextRequest('https://www.replayen.com/api/stats/v1/engagement'), { params: { resource: 'engagement' } })).status, 401);
+    global.fetch = async () => Response.json({ siteId: 'replay', timezone: 'Asia/Shanghai', engagement: { summary: { averageSeconds: 30 }, pages: [{ path: '/learn', averageSeconds: 30 }], hourly: [{ hour: 8, departures: 2 }], departureBuckets: [{ name: '少于 10 秒', count: 1 }], devices: [{ name: 'mobile', averageSeconds: 20 }] }, capabilities: { exportsEnabled: true } });
+    const hours = await stats(request('engagement-hours'), { params: { resource: 'engagement-hours' } });
+    assert.deepEqual((await hours.json()).data, [{ hour: 8, departures: 2 }]);
+    const csv = await stats(request('engagement-pages', 'csv'), { params: { resource: 'engagement-pages' } });
+    assert.match(await csv.text(), /"\/learn","30"/);
+    assert.equal((await stats(request('engagement', 'csv'), { params: { resource: 'engagement' } })).status, 400);
+    const devices = await stats(request('engagement-devices'), { params: { resource: 'engagement-devices' } });
+    assert.equal((await devices.json()).data[0].name, 'mobile');
+    global.fetch = async () => Response.json({ capabilities: { exportsEnabled: false } });
+    assert.equal((await stats(request('engagement-pages', 'csv'), { params: { resource: 'engagement-pages' } })).status, 403);
+  } finally { global.fetch = original; }
+});

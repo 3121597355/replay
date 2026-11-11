@@ -39,3 +39,18 @@ CREATE TABLE IF NOT EXISTS admin_settings (
   site_id TEXT PRIMARY KEY,
   data TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS page_engagement (
+  site_id TEXT NOT NULL,
+  visit_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  sequence INTEGER NOT NULL,
+  active_ms INTEGER NOT NULL,
+  state TEXT NOT NULL,
+  flags INTEGER NOT NULL,
+  device TEXT NOT NULL,
+  referrer TEXT NOT NULL,
+  PRIMARY KEY (site_id,visit_id)
+);
+CREATE INDEX IF NOT EXISTS engagement_updated ON page_engagement(site_id,updated_at);

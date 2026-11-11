@@ -1,5 +1,6 @@
 import { trackerSource } from "./tracker.mjs";
 import { adminRoute, deviceInfo, EVENT_LABELS, settings, sourceHost } from './admin.mjs';
+import { saveEngagement, validEngagement } from './engagement.mjs';
 
 const day = (time = Date.now()) => new Date(time + 28800000).toISOString().slice(0, 10);
 const offset = (date, n) => new Date(Date.parse(date) + n * 86400000).toISOString().slice(0, 10);
@@ -68,8 +69,9 @@ export default {
         if (typeof body.path !== "string" || !body.path.startsWith("/") || body.path.startsWith("//") || body.path.length > 300)
           return json({ error: "无效路径" }, 400);
         if (/^\/(admin|api)(\/|$)/.test(body.path)) return new Response(null, { status: 204, headers: cors });
-        if (body.type !== undefined && body.type !== 'event') return json({ error: '无效事件类型' }, 400);
+        if (body.type !== undefined && !['event', 'engagement'].includes(body.type)) return json({ error: '无效事件类型' }, 400);
         if (body.type === 'event' && !Object.hasOwn(EVENT_LABELS, body.name)) return json({ error: '未知功能事件' }, 400);
+        if (body.type === 'engagement' && !validEngagement(body)) return json({ error: '无效停留快照' }, 400);
         const ip = request.headers.get("CF-Connecting-IP");
         if (!ip || !env.RATE_LIMITER) return json({ error: "采集环境未就绪" }, 503);
         const d = day();
@@ -78,6 +80,11 @@ export default {
         if (!(await env.RATE_LIMITER.limit({ key: rateKey })).success)
           return new Response(null, { status: 429, headers: { ...cors, "Retry-After": "60" } });
         const now = new Date().toISOString(), path = body.path.split(/[?#]/)[0];
+        if (body.type === 'engagement') {
+          if (body.id !== 'replay' || !(await settings(env, body.id)).eventsEnabled) return new Response(null, { status: 204, headers: cors });
+          await saveEngagement(env, body, path, now, deviceInfo(request.headers.get('User-Agent') || ''), sourceHost(body.referrer));
+          return new Response(null, { status: 204, headers: cors });
+        }
         if (body.type === 'event') {
           if (!(await settings(env, body.id)).eventsEnabled) return new Response(null, { status: 204, headers: cors });
           await env.DB.prepare('INSERT OR IGNORE INTO product_events(site_id,event_id,day,visitor,name,path,received_at) VALUES (?,?,?,?,?,?,?)').bind(body.id, body.eventId, d, visitor, body.name, path, now).run();
@@ -123,5 +130,6 @@ export default {
     await env.DB.prepare("DELETE FROM visits WHERE day < ?").bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM visit_metadata WHERE day < ?').bind(offset(day(), -399)).run();
     await env.DB.prepare('DELETE FROM product_events WHERE day < ?').bind(offset(day(), -399)).run();
+    await env.DB.prepare('DELETE FROM page_engagement WHERE updated_at < ?').bind(offset(day(), -399)).run();
   },
 };

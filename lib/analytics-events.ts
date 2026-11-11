@@ -7,6 +7,7 @@ export function trackEvent(name: AnalyticsEvent) {
   if (typeof window === 'undefined' || navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl || /^\/(admin|api)(\/|$)/.test(location.pathname)) return;
   let config; try { config = analyticsConfig({ endpoint: process.env.NEXT_PUBLIC_YILAN_COLLECTOR_URL ?? 'https://yilan-collector.yilan-public-collector.workers.dev', siteId: process.env.NEXT_PUBLIC_YILAN_WEBSITE_ID }); } catch { return; }
   if (!config) return;
+  try { (window as Window & { __replayEngagementRecord?: (name: string) => void }).__replayEngagementRecord?.(name); } catch { /* Metrics never block learning. */ }
   const endpoint = new URL('/collect', config.src);
   const body = JSON.stringify({ id: config.siteId, eventId: crypto.randomUUID(), type: 'event', name, path: location.pathname.slice(0, 300) });
   // Retry the same ID; collection is idempotent. Analytics never blocks learning.

@@ -10,5 +10,5 @@ export default function Analytics() {
     siteId: process.env.NEXT_PUBLIC_YILAN_WEBSITE_ID,
   });
   if (/^\/(admin|api)(\/|$)/.test(path)) return null;
-  return <><Script id="umami-analytics" strategy="afterInteractive" src="https://cloud.umami.is/script.js" data-website-id="10592750-fb71-440a-8f01-bd7e7233432c" />{config && <Script id="yilan-analytics" strategy="afterInteractive" src={config.src} data-website-id={config.siteId} />}</>;
+  return <><Script id="umami-analytics" strategy="afterInteractive" src="https://cloud.umami.is/script.js" data-website-id="10592750-fb71-440a-8f01-bd7e7233432c" />{config && <Script id="yilan-analytics" strategy="afterInteractive" src={`${config.src}?v=20261111.2`} data-website-id={config.siteId} />}</>;
 }

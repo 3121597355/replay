@@ -4,8 +4,89 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import worker from '../services/analytics-collector/worker.mjs';
 import { passwordHash, sourceHost } from '../services/analytics-collector/admin.mjs';
+import vm from 'node:vm';
+import { trackerSource } from '../services/analytics-collector/tracker.mjs';
 
 const day = new Date(Date.now() + 28800000).toISOString().slice(0, 10);
+test('停留快照累计去重、乱序不覆盖状态，页面跳转不算网站离开', async () => {
+  const f = await fixture();
+  const body = { id: 'replay', eventId: 'engagement-visit-00001', path: '/learn?private=1', type: 'engagement', sequence: 1, activeMs: 0, state: 'active', flags: 0 };
+  assert.equal((await f.call('/collect', 'POST', body)).status, 204);
+  await f.call('/collect', 'POST', { ...body, sequence: 3, activeMs: 45000, flags: 3, state: 'route' });
+  await f.call('/collect', 'POST', { ...body, sequence: 2, activeMs: 15000, flags: 1, state: 'hidden' });
+  await f.call('/collect', 'POST', { ...body, sequence: 3, activeMs: 45000, flags: 3, state: 'route' });
+  const row = f.db.prepare('SELECT * FROM page_engagement').get();
+  assert.equal(row.active_ms, 45000); assert.equal(row.sequence, 3); assert.equal(row.state, 'route'); assert.equal(row.path, '/learn');
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM visits').get().n, 0);
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM product_events').get().n, 0);
+  await f.call('/collect', 'POST', { ...body, eventId: 'engagement-visit-00002', activeMs: 5000, state: 'left', flags: 8 });
+  const admin = await f.login();
+  const report = await (await f.call('/v1/websites/replay/admin/report', 'GET', undefined, admin)).json();
+  const e = report.engagement;
+  assert.equal(e.summary.completedViews, 2); assert.equal(e.summary.averageSeconds, 25);
+  assert.equal(e.summary.quickLeaveRate, 50); assert.equal(e.summary.departures, 1);
+  assert.equal(e.summary.learningWithoutPlay, 1); assert.equal(e.summary.learningWithPlay, 1); assert.equal(e.summary.learningWithError, 1);
+  assert.equal(e.pages[0].views, 2); assert.equal(e.pages[0].departures, 1); assert.equal(e.hourly.length, 24);
+  assert.equal(e.hourly.reduce((n, r) => n + r.departures, 0), 1);
+  assert.equal(e.departureBuckets[0].count, 1); assert.equal(e.durationBuckets[2].count, 1);
+  assert.equal(e.devices[0].averageSeconds, 25);
+  for (const invalid of [{ activeMs: -1 }, { activeMs: 86400001 }, { activeMs: 1.2 }, { sequence: 0 }, { state: 'made-up' }, { flags: 16 }])
+    assert.equal((await f.call('/collect', 'POST', { ...body, ...invalid })).status, 400);
+  assert.equal((await f.call('/collect', 'POST', { ...body, sequence: 4, path: '/different', state: 'left' })).status, 204);
+  assert.equal(f.db.prepare('SELECT state FROM page_engagement WHERE visit_id=?').get(body.eventId).state, 'route');
+  await f.call('/v1/websites/replay/admin/settings', 'PUT', { apiEnabled: false, eventsEnabled: false, exportsEnabled: true }, admin);
+  await f.call('/collect', 'POST', { ...body, eventId: 'engagement-visit-00003' });
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM page_engagement').get().n, 2);
+  f.db.close();
+});
+test('暂时切后台不判离开，超时推断与恢复修正，小时按北京时间', async () => {
+  const f = await fixture();
+  const base = { id: 'replay', eventId: 'engagement-visit-hidden', path: '/', type: 'engagement', sequence: 1, activeMs: 16000, state: 'hidden', flags: 0 };
+  await f.call('/collect', 'POST', base);
+  const admin = await f.login(), read = async () => (await (await f.call('/v1/websites/replay/admin/report', 'GET', undefined, admin)).json()).engagement;
+  assert.equal((await read()).summary.completedViews, 0);
+  f.db.prepare('UPDATE page_engagement SET updated_at=?').run(new Date(Date.now() - 31 * 60000).toISOString());
+  assert.equal((await read()).summary.inferredDepartures, 1);
+  await f.call('/collect', 'POST', { ...base, sequence: 2, state: 'active' });
+  assert.equal((await read()).summary.completedViews, 0);
+  f.db.prepare('UPDATE page_engagement SET updated_at=?').run(new Date(Date.now() - 121000).toISOString());
+  assert.equal((await read()).summary.inferredDepartures, 1);
+  await f.call('/collect', 'POST', { ...base, sequence: 3, state: 'left' });
+  f.db.prepare('UPDATE page_engagement SET updated_at=?').run(`${day}T00:30:00.000Z`);
+  assert.equal((await read()).hourly[8].departures, 1);
+  f.db.close();
+});
+test('真实追踪脚本：前台累计、后台不计时、BFCache不重复PV、功能归属与离页信号', () => {
+  let time = 0; const sent = [], timers = [], docListeners = {}, winListeners = {};
+  const document = { currentScript: { dataset: { websiteId: 'replay' }, src: 'https://collector.example/tracker.js' }, visibilityState: 'visible', referrer: 'https://www.xiaohongshu.com/post?secret=1', addEventListener: (name, fn) => (docListeners[name] ||= []).push(fn) };
+  const location = { pathname: '/learn' }, window = {};
+  const context = { document, location, window, performance: { now: () => time }, crypto, URL, Blob,
+    navigator: { sendBeacon: (_url, blob) => { sent.push(blob); return true; } },
+    fetch: async (_url, options) => { sent.push(JSON.parse(options.body)); return { status: 204 }; },
+    addEventListener: (name, fn) => (winListeners[name] ||= []).push(fn), setInterval: fn => timers.push(fn), setTimeout: () => {},
+    history: { pushState() {}, replaceState() {} } };
+  // Decode beacons synchronously through a minimal Blob stub for deterministic lifecycle assertions.
+  context.Blob = class { constructor(parts) { Object.assign(this, JSON.parse(parts[0])); } };
+  vm.runInNewContext(trackerSource, context);
+  const emitDoc = name => docListeners[name].forEach(fn => fn({}));
+  const emitWin = (name, event = {}) => winListeners[name].forEach(fn => fn(event));
+  time = 15000; timers.forEach(fn => fn());
+  assert.equal(sent.at(-1).activeMs, 15000);
+  time = 20000; document.visibilityState = 'hidden'; emitDoc('visibilitychange');
+  assert.equal(sent.at(-1).state, 'hidden'); assert.equal(sent.at(-1).activeMs, 20000);
+  time = 80000; document.visibilityState = 'visible'; emitDoc('visibilitychange');
+  assert.equal(sent.at(-1).activeMs, 20000);
+  window.__replayEngagementRecord('learning_start'); assert.equal(sent.at(-1).flags, 2);
+  window.__replayEngagementRecord('word_lookup'); assert.equal(sent.at(-1).flags, 6);
+  time = 85000; emitWin('pagehide'); assert.equal(sent.at(-1).state, 'left'); assert.equal(sent.at(-1).activeMs, 25000);
+  time = 95000; emitWin('pageshow', { persisted: true }); assert.equal(sent.at(-1).state, 'active'); assert.equal(sent.at(-1).activeMs, 25000);
+  assert.equal(sent.filter(row => row.type === undefined).length, 1);
+  location.pathname = '/download'; context.history.pushState({}, '', '/download');
+  assert.equal(sent.at(-3).state, 'route'); assert.equal(sent.filter(row => row.type === undefined).length, 2);
+  location.pathname = '/admin'; context.history.pushState({}, '', '/admin'); const count = sent.length;
+  timers.forEach(fn => fn()); window.__replayEngagementRecord('word_save'); assert.equal(sent.length, count);
+  assert.ok(sent.every(row => !JSON.stringify(row).includes('secret=1')));
+});
 async function fixture() {
   const db = new DatabaseSync(':memory:'); db.exec(readFileSync(new URL('../services/analytics-collector/schema.sql', import.meta.url), 'utf8'));
   const statement = (sql, bindings = []) => ({ bind: (...values) => statement(sql, values), first: async () => db.prepare(sql).get(...bindings) || null, run: async () => db.prepare(sql).run(...bindings), all: async () => ({ results: db.prepare(sql).all(...bindings) }) });

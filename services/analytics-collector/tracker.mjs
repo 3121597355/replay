@@ -1,3 +1,4 @@
+import { createEngagementTracker } from './engagement-tracker.mjs';
 // Shared by the local collector and the independently deployed public collector.
 export const trackerSource = String.raw`(() => {
   const script = document.currentScript;
@@ -13,7 +14,10 @@ export const trackerSource = String.raw`(() => {
     if (crypto.randomUUID) return crypto.randomUUID();
     return Array.from(crypto.getRandomValues(new Uint8Array(16)), n => n.toString(16).padStart(2, '0')).join('');
   }
-  async function send(body, attempt = 0) {
+  async function send(body, attempt = 0, final = false) {
+    if (final && navigator.sendBeacon) {
+      try { if (navigator.sendBeacon(endpoint, new Blob([body], { type: 'text/plain' }))) return; } catch {}
+    }
     try {
       const response = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
@@ -24,17 +28,21 @@ export const trackerSource = String.raw`(() => {
       if (attempt < 2) setTimeout(() => send(body, attempt + 1), 800 * (attempt + 1));
     }
   }
+  const engagement = (${createEngagementTracker.toString()})({ id, send });
   function track() {
     if (document.visibilityState !== 'visible' || location.pathname === lastPath) return;
+    engagement.finish('route');
     lastPath = location.pathname;
     if (/^\/(admin|api)(\/|$)/.test(lastPath)) return;
     // Only the path is sent. Query strings, fragments, titles and user content stay local.
     let referrer = ''; try { referrer = new URL(document.referrer).origin; } catch {}
-    void send(JSON.stringify({ id, eventId: eventId(), path: lastPath.slice(0, 300), referrer }));
+    const visitId = eventId();
+    void send(JSON.stringify({ id, eventId: visitId, path: lastPath.slice(0, 300), referrer }));
+    engagement.start(visitId, lastPath.slice(0, 300));
   }
   document.addEventListener('visibilitychange', track);
   addEventListener('popstate', track);
-  addEventListener('pageshow', event => { if (event.persisted) lastPath = undefined; track(); });
+  addEventListener('pageshow', () => track());
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
     history[method] = function (...args) {
