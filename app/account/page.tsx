@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { accountService, AccountError, USER_COOKIE } from '@/lib/account-server';
 import LearningHome from '@/components/account/LearningHome';
 import AccountWorkspace from '@/components/account/AccountWorkspace';
-export const metadata = { title: '我的学习', robots: { index: false, follow: false } };
+export const metadata = { title: '个人中心', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 export default async function AccountPage() {
   const token = (await cookies()).get(USER_COOKIE)?.value;

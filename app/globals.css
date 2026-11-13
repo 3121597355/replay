@@ -603,9 +603,8 @@ video::-webkit-media-controls-panel {
   }
 }
 
-/* Zoom reduces both viewport dimensions. Only constrain the workspace when
-   there is room for the header, wrapping toolbar and playback controls. */
-@media (min-width: 1100px) and (min-height: 760px) {
+/* Reserve controls first; zoom must not switch the desktop layout off. */
+@media (min-width: 1024px) {
   body:has([data-page='learn']) {
     display: flex;
     height: 100vh;
@@ -615,11 +614,15 @@ video::-webkit-media-controls-panel {
     overflow: hidden;
   }
   body:has([data-page='learn']) > main {
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     flex: 1;
   }
+  body:has([data-page='learn']) .trial-banner { flex-shrink: 0; }
   .learn-workspace {
-    height: 100%;
+    height: auto;
+    flex: 1;
     min-height: 0;
   }
   .learn-columns,
@@ -627,10 +630,12 @@ video::-webkit-media-controls-panel {
   .learn-subtitles {
     min-height: 0;
   }
-  .learn-stage {
+  .learn-player .learn-stage {
     min-height: 0;
     flex: 1;
     overflow: hidden;
+    container-type: size;
+    container-name: learning-stage;
   }
   .learn-stage-video {
     aspect-ratio: auto;
@@ -640,9 +645,48 @@ video::-webkit-media-controls-panel {
     justify-content: safe center;
     overflow-y: auto;
   }
+  .learn-controls {
+    max-height: min(360px, calc(100dvh - 280px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
   .learn-cue-list {
     max-height: none;
   }
+}
+@container learning-stage (max-height: 640px) {
+  .learn-stage .learn-empty { gap: 14px; padding: 20px; }
+  .learn-empty-icon > div:last-child { width: 44px; height: 44px; }
+  .learn-empty-steps > div { padding: 8px 10px; }
+  .learn-empty-steps { margin-top: 0; }
+}
+@container learning-stage (max-height: 520px) {
+  .learn-stage .learn-empty { gap: 12px; padding: 16px; }
+  .learn-empty-icon > div:last-child { width: 36px; height: 36px; }
+  .learn-empty-heading h3 { font-size: 18px; }
+  .learn-empty-heading p { margin-top: 6px; font-size: 12px; }
+  .learn-empty-actions .btn { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+  .learn-empty-shortcuts { display: none; }
+  .learn-stage .learn-audio-player { gap: 14px; padding: 16px; }
+  .learn-audio-cover > span { width: 48px; height: 48px; margin-bottom: 10px; font-size: 28px; }
+}
+@container learning-stage (max-height: 440px) {
+  .learn-stage .learn-empty { gap: 12px; padding: 14px; }
+  .learn-empty-steps,.learn-empty-formats { display: none; }
+  .learn-audio-cover > p:last-child { display: none; }
+}
+@container learning-stage (max-height: 320px) {
+  .learn-stage .learn-empty { gap: 10px; padding: 12px; }
+  .learn-empty-icon,.learn-empty-folder-note { display: none; }
+  .learn-audio-cover > span,.learn-audio-cover > p { display: none; }
+  .learn-audio-cover h2 { margin: 4px 0; font-size: 14px; }
+}
+@container learning-stage (max-height: 200px) {
+  .learn-stage .learn-empty { gap: 8px; padding: 8px; }
+  .learn-empty-heading h3 { font-size: 16px; }
+  .learn-empty-heading p { display: none; }
+  .learn-stage .learn-audio-player { gap: 8px; padding: 8px; }
+  .learn-audio-cover h2 { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 body:has([data-page='learn']) footer {
   display: none;

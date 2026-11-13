@@ -43,7 +43,7 @@ export default function AccountForm({ mode, returnTo = '/learn' }: { mode: 'sign
           {error && <div role="alert" className="account-error">{error}</div>}
           <button className="btn btn-primary account-full-button" disabled={busy}>{busy ? '正在处理…' : recover ? '重设密码' : signup ? '免费注册并开始学习' : '登录并继续学习'}</button>
         </fieldset></form>
-        {recover && <small>旧账号尚未绑定邮箱？先用原用户名和密码登录，在「我的学习 → 账号安全」绑定邮箱。</small>}
+        {recover && <small>旧账号尚未绑定邮箱？先用原用户名和密码登录，在「个人中心 → 账号设置」绑定邮箱。</small>}
         <div className="account-auth-links"><Link href={`${signup || recover ? '/login' : '/signup'}?returnTo=${encodeURIComponent(destination)}`}>{signup ? '已有账号？登录' : recover ? '返回登录' : '还没有账号？免费注册'}</Link>{!signup && !recover && <Link href={`/account/recover?returnTo=${encodeURIComponent(destination)}`}>忘记密码</Link>}</div>
       </>}
     </section></div></div></HomeMotion>;

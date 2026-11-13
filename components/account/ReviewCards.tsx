@@ -48,7 +48,7 @@ export default function ReviewCards() {
   const sentenceOnly = !current?.word || current.word === current.sentence;
   return <div className="account-review review-page">
     <LearningActivity enabled={ready && !!current} review />
-    <a href="/account" className="review-back-link">← 我的学习</a>
+    <a href="/account" className="review-back-link">← 学习概览</a>
     <header className="review-page-heading"><span className="account-eyebrow">收藏复习</span><h1>再练一遍，记得更牢。</h1><p>先回忆意思，听听原声，再翻面检查答案。</p></header>
     {notice && <div role="status" className="account-inline-note">{notice}</div>}
     {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <>

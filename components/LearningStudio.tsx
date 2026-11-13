@@ -1126,7 +1126,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     >
       {/* ============ 顶部工具栏 ============ */}
       <div className="shrink-0 border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] backdrop-blur-xl">
-        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
+        <div className="learn-toolbar mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
           <div className="mr-1 min-w-0 max-w-full flex-[1_1_160px]">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="title-serif min-w-0 truncate text-[15px] font-semibold text-[var(--text)]">
@@ -2369,7 +2369,7 @@ function EmptyVideo({
 }) {
   return (
     <div className="learn-empty flex w-full min-w-0 flex-col items-center justify-center gap-4 rounded-2xl border border-[rgb(var(--fg-rgb)/0.06)] bg-gradient-to-b from-[rgb(var(--fg-rgb)/0.03)] via-transparent to-transparent p-4 text-center sm:gap-6 sm:p-6">
-      <div className="relative">
+      <div className="learn-empty-icon relative">
         <div className="absolute inset-0 rounded-2xl bg-gold-500/10 blur-2xl" />
         <div className="relative grid h-14 w-14 place-items-center rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.04)]">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -2379,7 +2379,7 @@ function EmptyVideo({
         </div>
       </div>
 
-      <div>
+      <div className="learn-empty-heading">
         <h3 className="title-serif text-[20px] text-[var(--text)]">
           {workTitle ? `打开《${workTitle}》的副本` : '选一段自己的视频或音频'}
         </h3>
@@ -2389,7 +2389,7 @@ function EmptyVideo({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="learn-empty-actions flex flex-wrap items-center justify-center gap-2">
         <label className="btn btn-gold cursor-pointer">
           <input
             type="file"
@@ -2421,13 +2421,13 @@ function EmptyVideo({
       </div>
 
       {canFolder && (
-        <p className="-mt-2 text-[11px] text-[var(--text-faint)]">
+        <p className="learn-empty-folder-note -mt-2 text-[11px] text-[var(--text-faint)]">
           整个文件夹选进来，会把 S01E01.mkv、S01E01.简体&amp;英文.srt 自动配成一对
         </p>
       )}
 
       {/* 三步走 */}
-      <div className="mt-2 grid w-full max-w-lg grid-cols-3 gap-2">
+      <div className="learn-empty-steps mt-2 grid w-full max-w-lg grid-cols-3 gap-2">
         {[
           { n: '01', t: '选视频', d: '本地文件，不上传' },
           { n: '02', t: '抽字幕', d: '自动抽，或传 .srt' },
@@ -2449,7 +2449,7 @@ function EmptyVideo({
         没有片源？试学《海边的曼彻斯特》维修片段
       </button>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[10.5px] text-[var(--text-faint)]">
+      <div className="learn-empty-shortcuts flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[10.5px] text-[var(--text-faint)]">
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">空格</kbd>
           播放
@@ -2468,7 +2468,7 @@ function EmptyVideo({
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5 text-[10.5px] text-[var(--text-faint)]">
+      <div className="learn-empty-formats flex items-center gap-1.5 text-[10.5px] text-[var(--text-faint)]">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
           <path d="M12 8v5M12 16h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.4" />

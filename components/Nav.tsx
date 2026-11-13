@@ -8,7 +8,6 @@ import { NavAccount } from './account/AccountProvider';
 
 const links = [
   { href: '/', label: '首页' },
-  { href: '/#catalog', label: '片单' },
   { href: '/learn', label: '学习台' },
   { href: '/download', label: '下载' },
 ];
@@ -21,7 +20,7 @@ export default function Nav() {
 
   return (
     <header
-      className={`sticky top-0 z-50 shrink-0 border-b ${
+      className={`site-nav sticky top-0 z-50 shrink-0 border-b ${
         isLearn
           ? 'border-[rgb(var(--fg-rgb)/0.08)] bg-[var(--learn-bar)] backdrop-blur-md'
           : 'border-[var(--line)] bg-[rgb(var(--bg-rgb)/0.95)] backdrop-blur-md'
@@ -39,19 +38,15 @@ export default function Nav() {
           {links.map((link) => {
             const active = link.href === '/'
               ? pathname === '/'
-              : link.href === '/#catalog'
-                ? pathname.startsWith('/movie')
-                : pathname.startsWith(link.href);
+              : pathname.startsWith(link.href);
             // Entering or leaving the receiver must load the document's COOP policy.
             const NavLink = isDownload || link.href === '/download' ? 'a' : Link;
             return (
               <NavLink
                 key={link.href}
                 href={link.href}
-                className={`relative flex shrink-0 items-center whitespace-nowrap px-1 text-[13px] transition-colors sm:px-3.5 sm:text-[14px] ${
-                  isLearn
-                    ? active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
-                    : active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+                className={`relative flex shrink-0 items-center whitespace-nowrap px-0.5 text-[13px] transition-colors min-[360px]:px-1 sm:px-3.5 sm:text-[14px] ${
+                  active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                 }`}
               >
                 {link.label}
