@@ -40,8 +40,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-[var(--line)] bg-[var(--surface)]">
-        <div className="mx-auto grid max-w-[1120px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 sm:py-12">
+      <section className="home-benefits border-y border-[var(--line)] bg-[var(--surface)]">
+        <div className="home-benefits-grid mx-auto grid max-w-[1120px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 sm:py-12">
           {[
             {
               title: '视频、音频不上传',

@@ -55,8 +55,10 @@ button.learning-calendar-day:disabled{cursor:default;opacity:.6;outline:none}
 .review-page-heading .account-eyebrow{margin:0 0 8px}
 .review-page-heading h1{font-size:28px;font-weight:700;line-height:1.4;letter-spacing:-.5px}
 .review-page-heading p{margin-top:10px;font-size:14px;line-height:1.8;color:var(--text-dim)}
-.review-workspace{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start;gap:24px}
-.review-main,.review-content{min-width:0}
+.review-workspace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:24px}
+.review-main,.review-content{min-width:0;display:flex;flex-direction:column}
+.review-main{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.review-content{flex:1}
 .review-session-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:var(--text-dim);margin-bottom:12px}
 .review-session-bar strong{margin-left:8px;font-size:16px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 .review-session-bar strong span{font-size:12px;font-weight:400;color:var(--text-faint)}
@@ -64,10 +66,12 @@ button.learning-calendar-day:disabled{cursor:default;opacity:.6;outline:none}
 .review-session-bar .vocab-motion-toggle:hover{background:var(--surface)}
 .review-progress{height:3px;border-radius:3px;overflow:hidden;background:var(--line);margin-bottom:18px}
 .review-progress>span{display:block;height:100%;background:var(--accent);transition:width .2s}
-.account-flashcard.review-flashcard{margin:0;padding:0;text-align:left}
+.account-flashcard.review-flashcard{margin:0;padding:0;text-align:left;flex:1;display:flex;flex-direction:column}
+.review-flashcard .vocab-flip-card{flex:1;display:flex;flex-direction:column}
+.review-flashcard .vocab-flip-inner{flex:1;min-height:340px}
 .review-flashcard .vocab-flip-card{animation:review-card-enter .2s ease-out}
-.review-flashcard .vocab-flip-face{min-height:280px;padding:26px;gap:16px;background:var(--surface);border-color:var(--line);border-radius:14px}
-.review-flashcard .vocab-flip-back{background:var(--surface)}
+.review-flashcard .vocab-flip-face{min-height:340px;padding:22px;gap:16px;background:var(--page);border-color:var(--line);border-radius:10px}
+.review-flashcard .vocab-flip-back{background:var(--page)}
 .review-flashcard .vocab-flip-label{font-size:12px;font-weight:500}
 .review-flashcard h2{font-size:32px;line-height:1.25;overflow-wrap:anywhere}
 .review-flashcard .account-review-sentence{font-size:20px!important;line-height:1.75!important;margin:0!important}
@@ -80,24 +84,24 @@ button.learning-calendar-day:disabled{cursor:default;opacity:.6;outline:none}
 .review-decision-buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .review-decision-buttons .btn,.review-reveal{min-height:46px;justify-content:center;font-size:13px;border-radius:9px;padding:12px 10px;white-space:normal;text-align:center}
 .review-reveal{display:flex;width:100%}
-.review-keyboard-hint{margin-top:10px;text-align:center;color:var(--text-faint);font-size:11px;line-height:1.6}
-.review-audio{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);min-width:0}
+.review-keyboard-hint{margin-top:14px;text-align:center;color:var(--text-faint);font-size:11px;line-height:1.7}
+.review-audio{display:flex;flex-direction:column;padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);min-width:0}
 .review-audio-heading{display:flex;align-items:center;gap:8px}
-.review-audio-symbol{display:grid;place-items:center;color:var(--success-ink);width:28px;height:28px;border-radius:8px;background:color-mix(in srgb,var(--success-ink) 8%,var(--surface))}
-.review-audio h2{font-size:15px;font-weight:600;color:var(--text)}
-.review-source-name{font-size:12px;line-height:1.7;overflow-wrap:anywhere;color:var(--text-dim);margin:10px 0 16px}
-.review-audio .account-original-actions{margin:0;gap:12px 8px}
-.review-audio .account-original-actions .vocab-audio-action{width:100%;padding:8px 7px;font-size:12px;min-height:40px}
-.review-audio .saved-line-panel{padding:34px 0 0;border:0;border-radius:0;background:transparent}
-.review-audio .saved-line-close{top:0;right:0;font-size:11px}
+.review-step{display:grid;place-items:center;color:var(--success-ink);width:28px;height:28px;border-radius:8px;background:color-mix(in srgb,var(--success-ink) 8%,var(--surface));font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+.review-audio-heading h2{font-size:15px;font-weight:600;color:var(--text)}
+.review-source-name{font-size:12px;line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-dim);margin:10px 0 16px}
+.review-audio .account-original-actions{flex:1;grid-template-rows:minmax(340px,1fr) 46px;margin:0;gap:18px 12px}
+.review-audio .account-original-actions .vocab-audio-action{grid-row:2;width:100%;padding:12px 10px;font-size:13px;min-height:46px;border-radius:9px}
+.review-audio .saved-line-panel{grid-row:1;display:flex;flex-direction:column;justify-content:center;min-height:340px;padding:34px 12px 12px;border:1px solid var(--line);border-radius:10px;background:var(--page)}
+.review-audio .saved-line-close{top:4px;right:8px;font-size:11px}
 .review-audio .saved-line-source{font-size:10px;line-height:1.65}
-.review-audio .saved-line-panel video{max-height:240px}
-.review-audio-idle{grid-column:1/-1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:28px 12px;min-height:185px;border:1px dashed var(--line-strong);border-radius:10px;background:var(--page);text-align:center}
+.review-audio .saved-line-panel video{max-height:250px}
+.review-audio-idle{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:28px 12px;min-height:340px;border:1px solid var(--line);border-radius:10px;background:var(--page);text-align:center}
 .review-audio-idle>span{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--surface);color:var(--success-ink)}
 .review-audio-idle>span svg{width:26px;height:26px}
 .review-audio-idle strong{font-size:13px;font-weight:500;color:var(--text-soft)}
 .review-audio-idle p,.review-audio-note{font-size:11px;line-height:1.7;color:var(--text-faint)}
-.review-audio-note{margin-top:14px}
+.review-audio-note{margin-top:14px;text-align:center}
 .review-page>.review-storage-note{font-size:11px;line-height:1.8;color:var(--text-faint);margin-top:24px}
 .review-empty{margin-top:24px}
 @keyframes review-card-enter{from{opacity:.5;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -109,17 +113,20 @@ button.learning-calendar-day:disabled{cursor:default;opacity:.6;outline:none}
   .review-back-link{margin-bottom:12px}
   .review-workspace{grid-template-columns:minmax(0,1fr);gap:16px}
   .review-main{display:contents}
-  .review-content{grid-row:1}
+  .review-content{grid-row:1;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
   .review-audio{grid-row:2;padding:16px}
   .review-decision-bar{grid-row:3;position:sticky;bottom:12px;z-index:10;margin-top:0;padding:10px;background:var(--page);border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 20px rgb(var(--fg-rgb)/.08)}
   .review-decision-buttons{gap:8px}
   .review-decision-buttons .btn,.review-reveal{min-height:46px;font-size:12px;padding:10px 6px}
   .review-keyboard-hint{display:none}
+  .review-flashcard .vocab-flip-inner{min-height:235px}
   .review-flashcard .vocab-flip-face{padding:20px;min-height:235px;gap:14px}
   .review-flashcard h2{font-size:28px}
   .review-flashcard .account-review-sentence,.review-flashcard .vocab-flip-back .vocab-original-sentence{font-size:18px!important;line-height:1.75!important}
   .review-flashcard .vocab-answer-translation{font-size:16px}
-  .review-audio .account-original-actions .vocab-audio-action{min-height:44px}
+  .review-audio .account-original-actions{grid-template-rows:minmax(125px,1fr) auto;gap:14px 8px}
+  .review-audio .account-original-actions .vocab-audio-action{min-height:44px;padding:8px 7px;font-size:12px}
+  .review-audio .saved-line-panel{min-height:0}
   .review-audio-idle{min-height:125px;padding:18px 12px;gap:8px}
   .review-audio-idle>span{display:none}
   .review-audio .saved-line-panel video{max-height:210px}

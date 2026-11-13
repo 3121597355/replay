@@ -51,11 +51,14 @@ export default function ReviewCards() {
     <a href="/account" className="review-back-link">← 我的学习</a>
     <header className="review-page-heading"><span className="account-eyebrow">收藏复习</span><h1>再练一遍，记得更牢。</h1><p>先回忆意思，听听原声，再翻面检查答案。</p></header>
     {notice && <div role="status" className="account-inline-note">{notice}</div>}
-    {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <div className="review-workspace">
+    {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <>
+      <div className="review-session-bar"><span>本轮复习 <strong>{index + 1}<span> / {cards.length}</span></strong></span><VocabularyMotionToggle /></div>
+      <div className="review-progress" role="progressbar" aria-label="本轮已完成" aria-valuemin={0} aria-valuemax={cards.length} aria-valuenow={index}><span style={{ width: `${index / cards.length * 100}%` }} /></div>
+      <div className="review-workspace">
       <section className="review-main">
         <div className="review-content">
-          <div className="review-session-bar"><span>本轮复习 <strong>{index + 1}<span> / {cards.length}</span></strong></span><VocabularyMotionToggle /></div>
-          <div className="review-progress" role="progressbar" aria-label="本轮已完成" aria-valuemin={0} aria-valuemax={cards.length} aria-valuenow={index}><span style={{ width: `${index / cards.length * 100}%` }} /></div>
+          <div className="review-audio-heading"><span className="review-step">01</span><h2>回忆与释义</h2></div>
+          <p className="review-source-name">先回忆意思，再翻面检查答案。</p>
           <div className="account-flashcard review-flashcard">
             <VocabularyFlipCard key={identity(current)} flipped={answer} onFlip={setAnswer} label={current.word || current.sentence} answerLabel={savedSentenceAnswerLabel(current)}
               front={<><span className="vocab-flip-label">{sentenceOnly ? '英文原句' : '收藏的表达'}</span>{!sentenceOnly && <h2 lang="en">{current.word}</h2>}<p className="account-review-sentence" lang="en">{current.sentence || current.word}</p></>}
@@ -68,8 +71,8 @@ export default function ReviewCards() {
         </div>
       </section>
       <aside className="review-audio" aria-label="原句与发音">
-        <div className="review-audio-heading"><span className="review-audio-symbol"><VocabularyAudioIcon kind="speaker" /></span><h2>听回原来的语境</h2></div>
-        <p className="review-source-name">{current.clip?.videoName || '收藏对应的影视或音频'}</p>
+        <div className="review-audio-heading"><span className="review-step">02</span><h2>原声与发音</h2></div>
+        <p className="review-source-name" title={current.clip?.videoName}>{current.clip?.videoName || '收藏对应的影视或音频'}</p>
         <div className="account-original-actions">
           <SavedLineReplay key={identity(current)} word={current} idleContent={<div className="review-audio-idle"><span><VocabularyAudioIcon kind="play" /></span><strong>这句台词，是怎么说的？</strong><p>点击播放原句，听听原来的语气。</p></div>} />
           <button type="button" className="vocab-audio-action" onClick={() => { stopOriginalLinePlayback(); speak(current.word || current.sentence); }}><VocabularyAudioIcon kind="speaker" /><span>{sentenceOnly ? '听句子发音' : '听单词发音'}</span></button>
@@ -77,7 +80,7 @@ export default function ReviewCards() {
         <p className="review-audio-note">原声播到句尾会停下，可以跟着说一遍。</p>
       </aside>
       <span className="sr-only" role="status" aria-live="polite">第 {index + 1} 条，共 {cards.length} 条：{current.word || current.sentence}</span>
-    </div> : <section className="account-card review-empty"><h2>{cards.length ? '这轮复习完成了。' : '今天没有待复习的收藏。'}</h2><p>{cards.length ? `已复习 ${cards.length} 个表达，下次按复习时间继续。` : '去学习台收藏几个词和句子，回来就能练。已有收藏按计划到期后会出现在这里。'}</p><a href="/learn" className="btn btn-primary">回学习台</a></section>}
+    </div></> : <section className="account-card review-empty"><h2>{cards.length ? '这轮复习完成了。' : '今天没有待复习的收藏。'}</h2><p>{cards.length ? `已复习 ${cards.length} 个表达，下次按复习时间继续。` : '去学习台收藏几个词和句子，回来就能练。已有收藏按计划到期后会出现在这里。'}</p><a href="/learn" className="btn btn-primary">回学习台</a></section>}
     <p className="review-storage-note">收藏、原素材和复习进度保存在这台设备，无需上传。</p>
   </div>;
 }
