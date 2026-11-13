@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { SavedLineClip, SavedWord } from '@/lib/types';
 import { getStorageOwner } from '@/lib/account-storage';
 import { learningStore } from '@/lib/learning-session';
@@ -9,10 +9,12 @@ import { savedMediaStore } from '@/lib/saved-media';
 import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
 import { formatTime } from '@/lib/srt';
 import { isAudioSource, MEDIA_ACCEPT } from '@/lib/media';
+import VocabularyAudioIcon from './VocabularyAudioIcon';
 
 export const stopOriginalLinePlayback = () => window.dispatchEvent(new Event('replay:stop-original-line'));
 type Material = { clip: SavedLineClip; url: string; owned: boolean };
-export default function SavedLineReplay({ word }: { word: SavedWord }) {
+export default function SavedLineReplay({ word, idleContent }: { word: SavedWord; idleContent?: ReactNode }) {
+  const panelId = useId();
   const owner = getStorageOwner();
   const video = useRef<HTMLMediaElement | null>(null), picker = useRef<HTMLInputElement>(null), generation = useRef(0);
   const attachPlayer = useCallback((player: HTMLMediaElement | null) => { video.current = player; }, []);
@@ -82,8 +84,9 @@ export default function SavedLineReplay({ word }: { word: SavedWord }) {
     setError(''); show(missing, file);
   }
   return <div className="saved-line-replay" data-original-line>
-    <button type="button" className="account-text-link" disabled={busy} onClick={() => material ? replay() : void load()}>{busy ? '正在读取原句…' : '▶ 播放原句'}</button>
-    {open && <div className="saved-line-panel">
+    <button type="button" className="vocab-audio-action vocab-audio-action-primary" disabled={busy} aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => material ? replay() : void load()}><VocabularyAudioIcon kind="play" /><span>{busy ? '正在读取原句…' : '播放原句'}</span></button>
+    {!open && idleContent}
+    {open && <div className="saved-line-panel" id={panelId}>
       <button type="button" className="saved-line-close" aria-label="收起原句播放器" onClick={() => { generation.current++; video.current?.pause(); setMaterial(undefined); setOpen(false); setBusy(false); }}>收起 ×</button>
       {material && <><Player key={material.url} ref={attachPlayer} src={material.url} controls playsInline preload="metadata" aria-label={`原句回放：${word.sentence}`} onLoadedMetadata={replay} onTimeUpdate={stopAtEnd} onPlay={() => {
         const player = video.current; if (!player) return;

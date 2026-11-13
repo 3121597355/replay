@@ -669,17 +669,24 @@ body:has([data-page='learn']) footer {
 .saved-vocab-tools{display:flex;justify-content:space-between;gap:12px;padding:0 2px 8px}.saved-vocab-tools button{min-height:32px;padding:4px 6px;font-size:11px;color:var(--text-dim);border-radius:5px}.saved-vocab-tools button:hover{background:var(--surface-2);color:var(--text)}
 .saved-vocab-card+.saved-vocab-card{margin-top:16px}
 .saved-line-replay{min-width:0;margin-top:10px}
-.saved-line-replay>.account-text-link{min-height:36px;padding:6px 4px;color:var(--success-ink);font-size:13px}
+.vocab-audio-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;min-width:0;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text-dim);font-size:13px;line-height:1.4;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
+.vocab-audio-action svg{flex:0 0 16px;width:16px;height:16px}
+.vocab-audio-action:hover{background:var(--surface-2);color:var(--text)}
+.vocab-audio-action:focus-visible{outline:2px solid var(--link);outline-offset:3px}
+.vocab-audio-action:disabled{opacity:.6;cursor:wait}
+.vocab-audio-action-primary{color:var(--success-ink);border-color:color-mix(in srgb,var(--success-ink) 24%,var(--line));background:color-mix(in srgb,var(--success-ink) 7%,var(--surface))}
+.vocab-audio-action-primary:hover{color:var(--success-ink);background:color-mix(in srgb,var(--success-ink) 13%,var(--surface))}
+.saved-vocab-tools .vocab-audio-action{gap:6px;padding:4px 8px;border-radius:8px}
 .saved-line-panel{position:relative;min-width:0;margin-top:8px;padding:38px 12px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left}
 .saved-line-panel video{display:block;width:100%;max-height:340px;aspect-ratio:16/9;object-fit:contain;border-radius:7px;background:#111}
 .saved-line-panel audio{display:block;width:100%;max-width:100%;height:54px}
 .saved-line-close{position:absolute;top:5px;right:8px;min-height:30px;padding:4px 7px;font-size:12px;color:var(--text-dim)}
 .saved-line-source{margin:8px 0 0;font-size:11px;line-height:1.65;overflow-wrap:anywhere;color:var(--text-dim)}
 .saved-line-error{margin:0 0 10px;font-size:12px;line-height:1.7;overflow-wrap:anywhere;color:var(--text)}
-.account-original-actions{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin:14px 0;align-items:center}
+.account-original-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:14px 0;align-items:center}
 .account-original-actions .saved-line-replay{display:contents}
-.account-original-actions .saved-line-replay>.account-text-link{justify-self:end}
-.account-original-actions>.account-text-link{grid-column:2;grid-row:1;min-height:36px;font-size:13px}
+.account-original-actions .saved-line-replay>.vocab-audio-action{justify-self:end;max-width:100%}
+.account-original-actions>.vocab-audio-action{grid-column:2;grid-row:1;justify-self:start;max-width:100%}
 .account-original-actions .saved-line-panel{grid-column:1/-1;margin-top:0}
 .learn-stage-audio{aspect-ratio:auto;min-height:300px}
 .learn-stage-audio .learn-audio-player{flex-direction:column;gap:22px;padding:24px 16px;background:var(--surface);border:1px solid var(--line);color:var(--text)}
@@ -688,7 +695,7 @@ body:has([data-page='learn']) footer {
 .learn-audio-cover h2{margin:10px 0;font-size:17px;font-weight:600;overflow-wrap:anywhere}
 .learn-audio-cover p{font-size:12px;line-height:1.7;color:var(--text-dim)}
 .learn-audio-controls{display:block;width:100%;max-width:480px;min-height:54px;flex-shrink:0}
-@media(max-width:480px){.saved-line-panel{padding:36px 8px 10px}.learn-stage-audio{min-height:310px}.account-original-actions{gap:8px;font-size:12px}}
+@media(max-width:480px){.saved-line-panel{padding:36px 8px 10px}.learn-stage-audio{min-height:310px}.account-original-actions{gap:8px;font-size:12px}.vocab-audio-action{min-height:44px;gap:6px;padding:7px 8px;font-size:12px}}
 
 .speaking-practice{margin-top:10px;min-width:0}.speaking-toggle{display:flex;align-items:center;gap:7px;padding:8px 10px;min-height:36px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:12px;color:var(--success-ink);text-align:left}.speaking-toggle>span{margin-left:auto;font-size:10px;color:var(--text-faint)}
 .speaking-panel{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--learn-panel);max-height:300px;overflow-y:auto}.speaking-panel[hidden]{display:none}
