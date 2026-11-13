@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { guides } from '@/lib/guides';
+export const metadata = { title: '看剧学英语与口语跟读指南', description: '从选素材、逐句精听和跟读，到字幕同步、收藏复习和导出 Anki。免费阅读剧说英语的实用学习指南。', alternates: { canonical: '/guides' }, openGraph: { url: '/guides', title: '英语视频学习指南 · 剧说英语' } };
+export default function GuidesPage() { return <div className="account-home"><span className="account-eyebrow">学习指南 · 无需登录</span><h1 className="text-3xl font-bold">从素材准备，到真正开始练习。</h1><p className="mt-4 mb-8 text-[var(--text-dim)]">先解决一个具体问题，再回学习台试一试。</p><div className="grid gap-5">{guides.map(guide => <Link key={guide.slug} href={`/guides/${guide.slug}`} className="account-card"><h2>{guide.title}</h2><p>{guide.description}</p><span className="account-text-link">阅读指南 →</span></Link>)}</div><Link href="/learn?trial=1" className="btn btn-primary mt-8">先免费试学</Link></div>; }

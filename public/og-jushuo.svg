@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f5f6f1"/>
+  <rect x="750" y="92" width="354" height="446" rx="28" fill="#e4ebdf"/>
+  <rect x="790" y="141" width="274" height="174" rx="18" fill="#243a2d"/>
+  <path d="M906 191l57 37-57 37z" fill="#fff"/>
+  <rect x="790" y="347" width="274" height="44" rx="9" fill="#fff"/>
+  <rect x="790" y="410" width="221" height="13" rx="6" fill="#9cb29d"/>
+  <rect x="790" y="444" width="177" height="13" rx="6" fill="#bacbb6"/>
+  <rect x="790" y="478" width="243" height="13" rx="6" fill="#bacbb6"/>
+  <rect x="76" y="80" width="58" height="58" rx="12" fill="#27823a"/>
+  <path d="M97 96l21 13-21 13z" fill="#fff"/>
+  <g font-family="'Microsoft YaHei','Noto Sans SC',sans-serif">
+    <text x="154" y="121" font-size="34" font-weight="700" fill="#26382b">剧说英语</text>
+    <text x="76" y="269" font-size="59" font-weight="700" fill="#24352b">看剧练听力，</text>
+    <text x="76" y="354" font-size="59" font-weight="700" fill="#24352b">跟读练口语。</text>
+    <text x="76" y="423" font-size="25" fill="#667367">逐句循环 · 点词查义 · 收藏复习</text>
+    <text x="76" y="525" font-size="24" fill="#27823a">核心功能免费，视频留在本地</text>
+    <text x="76" y="574" font-size="19" fill="#849184">replayen.com</text>
+  </g>
+</svg>

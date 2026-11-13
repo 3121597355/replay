@@ -2,7 +2,7 @@
   "name": "replay",
   "version": "1.0.0",
   "private": true,
-  "description": "Replay — 看剧学英语。浏览器内播放本地视频，逐句精听、点词查义、导出 Anki。视频不上传。",
+  "description": "剧说英语 — 看剧练听力和口语。浏览器内播放本地视频，逐句精听、点词查义、导出 Anki。视频不上传。",
   "scripts": {
     "dev": "next dev -p 4310",
     "build": "next build",
@@ -14,9 +14,10 @@
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
-    "next": "^14.2.35",
+    "next": "^15.5.29",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
@@ -24,7 +25,7 @@
     "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.20",
     "fake-indexeddb": "^6.2.8",
-    "postcss": "8.4.47",
+    "postcss": "^8.5.32",
     "tailwindcss": "3.4.13",
     "tsx": "^4.23.15",
     "typescript": "5.6.3"
@@ -40,7 +41,10 @@
     "local-first"
   ],
   "engines": {
-    "node": ">=18.17"
+    "node": ">=18.18"
   },
-  "author": "winter solstice <3121597355@users.noreply.github.com>"
+  "author": "winter solstice <3121597355@users.noreply.github.com>",
+  "overrides": {
+    "postcss": "$postcss"
+  }
 }

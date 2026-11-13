@@ -6,7 +6,8 @@
  *
  * 按字幕指纹保存独立进度；视频与当前字幕的完整恢复由 learning-session.ts 负责。
  */
-const PREFIX = 'replay.progress.';
+import { storagePrefix } from './account-storage';
+const prefix = () => storagePrefix('replay.progress');
 /** 存多少部就清掉最旧的 */
 const MAX = 60;
 /** 时长的 2% 以内算看完了，没必要记住 */
@@ -35,11 +36,11 @@ export function saveProgress(
     if (p.time < 3) return;
     // 已经快播完，清掉旧记录，下次从头开始
     if (p.duration && p.time / p.duration > NEAR_END) {
-      localStorage.removeItem(PREFIX + hash);
+      localStorage.removeItem(prefix() + hash);
       return;
     }
     const entry: Progress = { ...p, at: Date.now() };
-    localStorage.setItem(PREFIX + hash, JSON.stringify(entry));
+    localStorage.setItem(prefix() + hash, JSON.stringify(entry));
     evict();
   } catch {
     /* 配额满了就算了，不打断播放 */
@@ -49,7 +50,7 @@ export function saveProgress(
 export function loadProgress(hash: string): Progress | null {
   if (!hash) return null;
   try {
-    const raw = localStorage.getItem(PREFIX + hash);
+    const raw = localStorage.getItem(prefix() + hash);
     if (!raw) return null;
     const p = JSON.parse(raw) as Progress;
     if (typeof p?.time !== 'number' || p.time < 3) return null;
@@ -61,7 +62,7 @@ export function loadProgress(hash: string): Progress | null {
 
 export function clearProgress(hash: string): void {
   try {
-    localStorage.removeItem(PREFIX + hash);
+    localStorage.removeItem(prefix() + hash);
   } catch {
     /* ignore */
   }
@@ -72,7 +73,7 @@ function evict() {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith(PREFIX)) continue;
+      if (!k || !k.startsWith(prefix())) continue;
       let at = 0;
       try {
         at = (JSON.parse(localStorage.getItem(k) ?? '{}') as Progress).at ?? 0;

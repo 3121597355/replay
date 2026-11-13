@@ -3,8 +3,8 @@ import { ADMIN_COOKIE, copyResponse, noStore, sameOrigin, smallText, upstream } 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 const error = (message: string, status: number) => NextResponse.json({ error: message }, { status, headers: noStore });
-async function handle(request: NextRequest, { params }: { params: { action: string } }) {
-  const { action } = params;
+async function handle(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
+  const { action } = await params;
   const allowed: Record<string, string[]> = { login: ['POST'], logout: ['POST'], report: ['GET'], settings: ['GET', 'PUT'], token: ['POST'], password: ['POST'] };
   if (!allowed[action]?.includes(request.method)) return error('接口不存在', 404);
   if (request.method !== 'GET' && !sameOrigin(request)) return error('请求来源无效', 403);

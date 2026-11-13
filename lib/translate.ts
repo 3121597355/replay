@@ -1,5 +1,6 @@
 import type { Cue } from './types';
 import { isSoundCue } from './lang';
+import { storageKey } from './account-storage';
 
 export interface TranslateConfig {
   baseUrl: string;
@@ -18,7 +19,7 @@ const STORAGE_KEY = 'replay.translate.config';
 export function loadConfig(): TranslateConfig {
   if (typeof window === 'undefined') return DEFAULT_CONFIG;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(STORAGE_KEY));
     if (!raw) return DEFAULT_CONFIG;
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch {
@@ -29,7 +30,7 @@ export function loadConfig(): TranslateConfig {
 export function saveConfig(cfg: TranslateConfig) {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    window.localStorage.setItem(storageKey(STORAGE_KEY), JSON.stringify(cfg));
     return true;
   } catch {
     return false;

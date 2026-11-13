@@ -4,6 +4,7 @@ export type AnalyticsEvent = 'sample_ready' | 'video_import' | 'subtitle_import'
 
 /** Fixed event names only: never send words, subtitles, filenames or API settings. */
 export function trackEvent(name: AnalyticsEvent) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('replay:learning-action', { detail: name }));
   if (typeof window === 'undefined' || navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl || /^\/(admin|api)(\/|$)/.test(location.pathname)) return;
   let config; try { config = analyticsConfig({ endpoint: process.env.NEXT_PUBLIC_YILAN_COLLECTOR_URL ?? 'https://yilan-collector.yilan-public-collector.workers.dev', siteId: process.env.NEXT_PUBLIC_YILAN_WEBSITE_ID }); } catch { return; }
   if (!config) return;

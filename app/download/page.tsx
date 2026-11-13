@@ -142,7 +142,7 @@ function DownloadInner() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">只有链接？这里一键下载视频！</h1>
-          <p className="mt-3 max-w-[740px] text-sm leading-7 text-[var(--text-dim)]">Replay 的可选拓展功能：下载支持来源的视频、电影等内容，可单独保存，也能分离字幕后导入学习。</p>
+          <p className="mt-3 max-w-[740px] text-sm leading-7 text-[var(--text-dim)]">剧说英语的可选拓展功能：下载支持来源的视频、电影等内容，可单独保存，也能分离字幕后导入学习。</p>
         </div>
         <div><button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-ghost !min-h-[44px]">导入已有 MP4 / SRT</button><p className="mt-2 text-xs text-[var(--text-faint)]">已有文件可直接学习，无需组件</p></div>
       </div>
@@ -156,7 +156,7 @@ function DownloadInner() {
       {message && <p role="status" aria-live="polite" className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm leading-6">{message}</p>}
 
       <section className="mt-6" aria-label="内置视频下载器" aria-busy={connection === 'connecting'}>
-        {frameUrl && <iframe ref={frameRef} title="Replay 内置视频下载器" src={frameUrl} {...{ credentialless: '' }}
+        {frameUrl && <iframe ref={frameRef} title="剧说英语内置视频下载器" src={frameUrl} {...{ credentialless: '' }}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
           allow="clipboard-read; clipboard-write" onLoad={syncFrame}
           className="w-full border-0" style={{ height: frameHeight, display: connection === 'connected' ? 'block' : 'none' }} />}
@@ -169,7 +169,7 @@ function DownloadInner() {
         void receiveBundle({ video: videos[0], subtitles: files.filter(file => /\.srt$/i.test(file.name)) });
         event.target.value = '';
       }} />
-      <p className="mt-5 text-xs leading-6 text-[var(--text-faint)]">视频与字幕保存在本机，不上传到 Replay。支持分离文本软字幕；硬字幕和图片字幕暂不能直接转为 SRT。</p>
+      <p className="mt-5 text-xs leading-6 text-[var(--text-faint)]">视频与字幕保存在本机，不上传到剧说英语。支持分离文本软字幕；硬字幕和图片字幕暂不能直接转为 SRT。</p>
     </main>
   );
 }

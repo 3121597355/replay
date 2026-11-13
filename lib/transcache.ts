@@ -8,7 +8,8 @@
  * 存两份纯属浪费配额。
  */
 
-const PREFIX = 'replay.trans.';
+import { storagePrefix } from './account-storage';
+const prefix = () => storagePrefix('replay.trans');
 /** 最多留几部。超了淘汰最久没打开的。localStorage 只有 5MB 左右。 */
 const MAX_ENTRIES = 24;
 
@@ -53,7 +54,7 @@ function safeParse(raw: string | null): TransCacheEntry | null {
 
 export function readCache(hash: string): TransCacheEntry | null {
   try {
-    return safeParse(localStorage.getItem(PREFIX + hash));
+    return safeParse(localStorage.getItem(prefix() + hash));
   } catch {
     return null;
   }
@@ -65,9 +66,9 @@ export function listCaches(): { hash: string; entry: TransCacheEntry }[] {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith(PREFIX)) continue;
+      if (!k || !k.startsWith(prefix())) continue;
       const entry = safeParse(localStorage.getItem(k));
-      if (entry) out.push({ hash: k.slice(PREFIX.length), entry });
+      if (entry) out.push({ hash: k.slice(prefix().length), entry });
     }
   } catch {
     /* 隐私模式下 localStorage 可能直接抛 */
@@ -81,7 +82,7 @@ function evict() {
   if (all.length <= MAX_ENTRIES) return;
   for (const { hash } of all.slice(MAX_ENTRIES)) {
     try {
-      localStorage.removeItem(PREFIX + hash);
+      localStorage.removeItem(prefix() + hash);
     } catch {
       /* ignore */
     }
@@ -100,7 +101,7 @@ export function writeCache(
   if (items.length === 0) return false;
   const entry: TransCacheEntry = { v: 1, name, savedAt: Date.now(), model, items };
   try {
-    localStorage.setItem(PREFIX + hash, JSON.stringify(entry));
+    localStorage.setItem(prefix() + hash, JSON.stringify(entry));
     evict();
     return true;
   } catch {
@@ -108,13 +109,13 @@ export function writeCache(
     const all = listCaches();
     for (const { hash: h } of all.slice(Math.max(1, Math.floor(all.length / 2)))) {
       try {
-        localStorage.removeItem(PREFIX + h);
+        localStorage.removeItem(prefix() + h);
       } catch {
         /* ignore */
       }
     }
     try {
-      localStorage.setItem(PREFIX + hash, JSON.stringify(entry));
+      localStorage.setItem(prefix() + hash, JSON.stringify(entry));
       return true;
     } catch {
       return false;
@@ -143,7 +144,7 @@ export function mergeCache(
 
 export function clearCache(hash: string) {
   try {
-    localStorage.removeItem(PREFIX + hash);
+    localStorage.removeItem(prefix() + hash);
   } catch {
     /* ignore */
   }
@@ -162,7 +163,7 @@ export function cacheStats(): { count: number; bytes: number } {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith(PREFIX)) continue;
+      if (!k || !k.startsWith(prefix())) continue;
       const v = localStorage.getItem(k);
       if (v) {
         bytes += v.length * 2; // UTF-16 估算

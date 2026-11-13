@@ -10,16 +10,20 @@ export function generateStaticParams() {
   return works.map((work) => ({ slug: work.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const work = getWork(params.slug);
   if (!work) return { title: '找不到这部作品' };
   return {
-    title: `${work.title} · 学习指南 · Replay`,
+    title: `${work.title}英语学习指南｜难度与逐句练习`,
     description: work.whyLearn.slice(0, 120),
+    alternates: { canonical: `/movie/${work.slug}` },
+    openGraph: { title: `${work.title}英语学习指南 · 剧说英语`, description: work.whyLearn.slice(0, 120), url: `/movie/${work.slug}` },
   };
 }
 
-export default function MoviePage({ params }: { params: { slug: string } }) {
+export default async function MoviePage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const work = getWork(params.slug);
   if (!work) notFound();
 

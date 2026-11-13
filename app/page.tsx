@@ -4,6 +4,8 @@ import Poster from '@/components/Poster';
 import HomeMotion from '@/components/HomeMotion';
 import { getWork, works } from '@/lib/data';
 import { difficultyLabel } from '@/lib/types';
+import { siteName, siteUrl } from '@/lib/site';
+export const metadata = { alternates: { canonical: '/' }, openGraph: { url: '/', title: '剧说英语｜免费看剧练听力与口语' } };
 
 const featuredSlugs = ['friends', 'breaking-bad', 'better-call-saul', 'game-of-thrones'];
 const featured = featuredSlugs
@@ -13,21 +15,21 @@ const featured = featuredSlugs
 export default function HomePage() {
   return (
     <HomeMotion>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: siteName, alternateName: 'Replay', url: siteUrl }).replace(/</g, '\\u003c') }} />
       <section className="mx-auto max-w-[1120px] px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
         <div className="home-hero mx-auto max-w-[760px] text-center">
+          <p className="home-intro mb-5 text-[13px] font-medium text-[var(--accent)]">剧说英语 · 核心功能免费</p>
           <h1 className="home-intro text-balance text-[44px] font-bold leading-[1.08] tracking-[-0.045em] text-[var(--text)] sm:text-[60px]">
-            看剧，学英语。
+            看剧练听力，<br />跟读练口语。
           </h1>
           <p className="home-intro mx-auto mt-5 max-w-[620px] text-[16px] leading-[1.7] text-[var(--text-dim)] [animation-delay:60ms] sm:text-[18px]">
             导入自己的视频和字幕，逐句精听、查词和收藏，最后导出到 Anki。
           </p>
           <div className="home-intro mt-8 flex flex-wrap items-center justify-center gap-3 [animation-delay:120ms]">
-            <Link href="/learn" className="btn btn-primary !px-5">
-              开始学习
+            <Link href="/learn?trial=1" className="btn btn-primary !px-5">
+              先免费试学
             </Link>
-            <a href="#catalog" className="btn btn-secondary !px-5">
-              浏览片单
-            </a>
+            <Link href="/learn" className="btn btn-secondary !px-5">开始完整学习</Link>
           </div>
         </div>
       </section>
@@ -37,7 +39,7 @@ export default function HomePage() {
           {[
             {
               title: '视频不上传',
-              text: '视频和字幕由浏览器直接读取，学习记录只保存在本机。',
+              text: '视频、字幕和收藏由浏览器保存；账号只记录学习时间和天数。',
               icon: 'M10 1.8 17 4.5v5.1c0 4.2-2.8 7.1-7 8.6-4.2-1.5-7-4.4-7-8.6V4.5l7-2.7Zm-3 8.2 2.2 2.2 4-4',
             },
             {

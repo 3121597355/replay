@@ -24,6 +24,8 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Admin and analytics checks
         run: node --test scripts/admin-collector.test.mjs
+      - name: Account service checks
+        run: node --test scripts/accounts-worker.test.mjs
       - name: Ensure media tools
         run: |
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
@@ -60,4 +62,5 @@ jobs:
           npx tsx scripts/test-srt-export.ts
           npx tsx scripts/test-download-import.ts
           npx tsx --test scripts/learning-session.test.ts
-          npx tsx --test scripts/admin-api.test.ts
+          npx tsx --require ./scripts/server-only-test.cjs --test scripts/admin-api.test.ts scripts/accounts-api.test.ts
+          npx tsx --test scripts/accounts-core.test.ts

@@ -1,0 +1,8 @@
+{
+  "name": "jushuo-accounts",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "d1_databases": [{ "binding": "DB", "database_name": "jushuo-accounts", "database_id": "YOUR_DATABASE_ID" }]
+}

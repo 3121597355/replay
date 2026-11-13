@@ -1,11 +1,12 @@
 import type { SavedWord } from './types';
+import { storageKey } from './account-storage';
 
 const KEY = 'replay.saved';
 
 /** Storage can be unavailable in mobile webviews and private browsing. */
 export function loadSavedWords(): SavedWord[] {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? '[]');
+    const value: unknown = JSON.parse(localStorage.getItem(storageKey(KEY)) ?? '[]');
     if (!Array.isArray(value)) return [];
     return value.filter((item): item is SavedWord =>
       item !== null && typeof item === 'object' &&
@@ -19,7 +20,7 @@ export function loadSavedWords(): SavedWord[] {
 
 export function persistSavedWords(words: SavedWord[]): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(words));
+    localStorage.setItem(storageKey(KEY), JSON.stringify(words));
     return true;
   } catch {
     return false;

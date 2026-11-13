@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation';
 import { ADMIN_COOKIE, upstream } from '@/lib/admin-proxy';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Replay 管理后台', robots: { index: false, follow: false } };
+export const metadata = { title: '管理后台', robots: { index: false, follow: false } };
 export default async function AdminPage() {
-  const token = cookies().get(ADMIN_COOKIE)?.value;
+  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token || token.length > 1024) redirect('/admin/login');
   let valid = false;
   let initialSettings, initialReport;

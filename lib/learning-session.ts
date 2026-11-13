@@ -1,4 +1,5 @@
 import type { Cue } from './types';
+import { getStorageOwner } from './account-storage';
 
 const DB_NAME = 'replay-learning-session';
 const SESSION_STORE = 'session';
@@ -20,7 +21,8 @@ export type SessionSaveResult = { saved: boolean; message?: string };
 
 // Keeps navigation instant, including navigation while IndexedDB is still writing.
 // Durable storage also restores the session after a full refresh/browser restart.
-export function createLearningSessionStore() {
+export function createLearningSessionStore(owner = 'local') {
+const databaseName = owner === 'local' ? DB_NAME : `${DB_NAME}-${owner}`;
 let remembered: (StoredSession & { video?: File }) | null = null;
 let writes: Promise<unknown> = Promise.resolve();
 let revision = 0;
@@ -34,7 +36,7 @@ function enqueue<T>(action: () => Promise<T>): Promise<T> {
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') { reject(new Error('当前浏览器无法保存学习记录。')); return; }
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(databaseName, 1);
     let expired = false;
     const timer = setTimeout(() => { expired = true; reject(new Error('本地存储打开超时，请关闭其他 Replay 标签页后重试。')); }, 5000);
     request.onupgradeneeded = () => {
@@ -180,5 +182,15 @@ function clearLearningSession(): Promise<void> {
 return { fileLearningSource, matchesLearningVideo, rememberLearningSession, saveLearningSession, loadLearningSession, clearLearningSession };
 }
 
-export const { fileLearningSource, matchesLearningVideo, rememberLearningSession,
-  saveLearningSession, loadLearningSession, clearLearningSession } = createLearningSessionStore();
+const stores = new Map<string, ReturnType<typeof createLearningSessionStore>>();
+export function learningStore(owner = getStorageOwner()) {
+  let store = stores.get(owner);
+  if (!store) { store = createLearningSessionStore(owner); stores.set(owner, store); }
+  return store;
+}
+export const fileLearningSource = (file: File) => learningStore().fileLearningSource(file);
+export const matchesLearningVideo = (source: LearningSource, file: File) => learningStore().matchesLearningVideo(source, file);
+export const rememberLearningSession = (session: LearningSession, video?: File) => learningStore().rememberLearningSession(session, video);
+export const saveLearningSession = (session: LearningSession, video?: File) => learningStore().saveLearningSession(session, video);
+export const loadLearningSession = () => learningStore().loadLearningSession();
+export const clearLearningSession = () => learningStore().clearLearningSession();

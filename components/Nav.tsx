@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 import ReplayMark from './ReplayMark';
+import { NavAccount } from './account/AccountProvider';
 
 const links = [
   { href: '/', label: '首页' },
@@ -27,10 +28,10 @@ export default function Nav() {
       }`}
     >
       <div className="mx-auto flex min-h-16 w-full min-w-0 max-w-[1120px] flex-wrap items-center gap-y-1 px-3 sm:px-6">
-        <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="Replay 首页">
+        <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="剧说英语 首页">
           <ReplayMark className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]" />
           <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[480px]:block">
-            Replay
+            剧说英语
           </span>
         </HomeLink>
 
@@ -67,8 +68,8 @@ export default function Nav() {
             href="https://github.com/3121597355/replay"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Star on GitHub，查看 Replay 开源仓库"
-            title="Star on GitHub · Replay 开源仓库"
+            aria-label="Star on GitHub，查看剧说英语开源仓库"
+            title="Star on GitHub · 剧说英语开源仓库"
             className="inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] sm:h-9 lg:px-3"
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -77,13 +78,7 @@ export default function Nav() {
             <span className="hidden whitespace-nowrap text-[13px] font-medium lg:inline">Star on GitHub</span>
           </a>
           <ThemeToggle />
-          {isLearn ? (
-            <span className="hidden text-[12px] text-[var(--text-faint)] sm:block">本地运行</span>
-          ) : (
-            <HomeLink href="/learn" className="btn btn-primary hidden !h-8 !px-3 !py-0 !text-[13px] sm:inline-flex">
-              开始学习
-            </HomeLink>
-          )}
+          <NavAccount />
         </div>
       </div>
     </header>

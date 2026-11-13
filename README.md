@@ -1,18 +1,18 @@
-# Replay · 看剧学英语
+# 剧说英语 · 看剧练听力和口语
 
 > 把一部剧，变成一份生词本。
 
-一个**完全本地**的英语学习工具：选一部适合你水平的剧，在浏览器里播放，逐句精听，点词查义，把值得记的表达收进生词本，一键导出 Anki。
+一个免费、开源、以本地内容为基础的英语学习工具：选一部适合你水平的剧，在浏览器里播放，逐句精听和跟读，点词查义，把值得记的表达收进生词本，一键导出 Anki。
 
 **视频不上传，一个字节都不会。**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-1f883d.svg)](./LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs)](https://nextjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?logo=tailwindcss)](https://tailwindcss.com/)
 
 ![Replay 首页（浅色）](docs/home-light.webp)
 
-<sub>English: Replay is a local-first English learning player for TV series. It plays your own video files in the browser, syncs bilingual subtitles line by line, looks up words with a bundled ECDICT subset, and exports everything to Anki. No upload, no account, no backend.</sub>
+<sub>English: Jushuo English (formerly Replay) is a free, open-source, local-first player for English listening and speaking practice. Videos, subtitles and vocabulary stay on your device. Hosted accounts record learning time; self-hosting can run without accounts.</sub>
 
 ---
 
@@ -22,7 +22,7 @@
 
 中间是空的：**没有人把「一部剧」变成「一份可以背的生词本」。**
 
-Replay 的三个决定：
+剧说英语的三个决定：
 
 1. **视频不上传** —— File API + `URL.createObjectURL`，视频在浏览器播放；最近一次视频与学习状态保存在浏览器本地，退出后可以恢复
 2. **不提供片源和字幕** —— 目录只做信息聚合、难度评级、学习建议
@@ -109,12 +109,13 @@ Anki 卡片（正面英文、背面译文与重点词）、双语 `.srt` / `.vtt
 
 ## 快速开始
 
-需要 Node.js **18.17+**（推荐 20，见 `.nvmrc`）。
+需要 Node.js **18.18+**（推荐 20，见 `.nvmrc`）。
 
 ```bash
 git clone https://github.com/3121597355/replay.git
 cd replay
 npm ci
+cp .env.example .env.local  # 本地模式，无需注册；Windows PowerShell 用 Copy-Item
 npm run dev      # http://localhost:4310
 ```
 
@@ -125,7 +126,7 @@ npm run build
 npm start
 ```
 
-不需要后端、数据库、账户。想用翻译功能，点右上角齿轮填一个 API Key 即可（默认指向 DeepSeek，可改成任意兼容接口）。
+自行部署默认使用 `REPLAY_LOCAL_MODE=1`，无需账号服务或数据库。想用翻译功能，在设置中填自己的 API Key（默认 DeepSeek，可改成兼容接口）。配置两个账号服务环境变量后会启用免费注册模式，详情见 [账号服务说明](services/accounts/README.md)。
 
 > 「示例片段」加载 `public/sample/manchester-repair-v2.mp4` 和配套 `.srt`。
 > 片段取自《海边的曼彻斯特》的维修对话，约 39 秒；视频与字幕来自同一版本，按同一个起点截取。
@@ -135,7 +136,7 @@ npm start
 
 ## 部署
 
-推荐 **Vercel**：导入仓库 → 框架自动识别为 Next.js → 直接部署，无需环境变量。
+推荐 **Vercel**：导入仓库 → 框架自动识别为 Next.js。自行部署设置 `REPLAY_LOCAL_MODE=1` 即可免账号使用；正式站需配置 `REPLAY_ACCOUNTS_URL` 和仅服务端使用的 `REPLAY_ACCOUNTS_SECRET`，并设置 `NEXT_PUBLIC_SITE_URL` 为站点域名。缺少账号配置时仍可试学，完整学习台不会自动开放。不要把密钥设置为 NEXT_PUBLIC 变量。
 
 **为什么不能直接丢到 GitHub Pages**：抽字幕用的 ffmpeg.wasm 依赖 `SharedArrayBuffer`，
 浏览器要求页面处于跨域隔离状态，也就是响应头里必须有：

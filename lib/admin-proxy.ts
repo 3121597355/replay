@@ -11,7 +11,11 @@ export function collectorConfig() {
   return { endpoint: new URL(config.src).origin, siteId: config.siteId };
 }
 export function sameOrigin(request: NextRequest) {
-  return request.headers.get('origin') === request.nextUrl.origin;
+  // Next dev may normalize 127.0.0.1 to localhost in nextUrl. Host is the
+  // destination authority sent by the browser, which scripts cannot override.
+  const host = request.headers.get('host') || request.nextUrl.host;
+  if (!/^[a-z0-9.\[\]:-]+$/i.test(host)) return false;
+  return request.headers.get('origin') === `${request.nextUrl.protocol}//${host}`;
 }
 export async function smallText(request: NextRequest) {
   if (!request.body) return '';

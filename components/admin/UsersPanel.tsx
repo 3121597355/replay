@@ -1,0 +1,25 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { Plot, HorizontalBars, chartRate, chartCount } from './AdminCharts';
+type Retention = { eligible: number; returned: number; rate: number | null };
+type Report = { generatedAt: string; summary: { registeredUsers: number; newUsers: number; active7: number; active30: number; d1: Retention; d7: Retention }; points: { date: string; users: number }[]; cohorts: { day: string; users: number; d1: number; d7: number; d1Rate: number | null; d7Rate: number | null }[]; users: { id: string; username: string; source: string; created_at: string; seconds: number; last_learning: string | null }[]; sources: { name: string; count: number }[]; definition: string };
+export default function UsersPanel({ start, end, refreshKey = 0 }: { start: string; end: string; refreshKey?: number }) {
+  const [report, setReport] = useState<Report>(), [error, setError] = useState('');
+  useEffect(() => {
+    let stopped = false, pending = false;
+    const load = async () => {
+      if (pending || document.visibilityState !== 'visible') return; pending = true;
+      try { const response = await fetch(`/api/admin/users?start=${start}&end=${end}`, { cache: 'no-store', signal: AbortSignal.timeout(20000) }); if (response.status === 401) { window.location.assign('/admin/login'); return; } const data = await response.json(); if (!response.ok) throw new Error(data.error); if (!stopped) { setReport(data); setError(''); } }
+      catch (issue) { if (!stopped) setError(issue instanceof Error ? issue.message : '读取失败'); } finally { pending = false; }
+    };
+    void load(); const timer = setInterval(() => void load(), 10000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [start, end, refreshKey]);
+  if (!report) return <div className="ra-empty" role="status">{error || '正在读取真实注册用户…'}</div>;
+  const summary = report.summary;
+  return <>{error && <div className="ra-error">{error}</div>}<div className="ra-traffic-metrics">{[['累计注册用户', summary.registeredUsers], ['区间新增用户', summary.newUsers], ['近 7 天学习用户', summary.active7], ['近 30 天学习用户', summary.active30]].map(([label, value]) => <section key={label} className="ra-traffic-metric"><div>{label}</div><strong>{chartCount(value as number)}</strong></section>)}<section className="ra-traffic-metric"><div>D7 留存</div><strong>{chartRate(summary.d7.rate)}</strong><small>{summary.d7.returned} / {summary.d7.eligible} 个已到观察日的账号</small></section></div><p className="ra-help">{report.definition}</p>
+    <section className="ra-panel"><div className="ra-panel-heading"><div><h2>注册用户趋势</h2><p>按实际账号创建日期统计，排除测试账号</p></div></div><Plot rows={report.points.map(point => ({ key: point.date, hint: point.date, label: point.date.slice(5), value: point.users }))} label="注册用户" unit="people" kind="bar" empty={!report.points.length} emptyText="等待第一位注册用户" /></section>
+    <div className="ra-chart-grid-layout"><section className="ra-panel"><div className="ra-panel-heading"><div><h2>注册来源</h2><p>来源由注册前入口记录，站内跳转不覆盖最初来源</p></div></div><HorizontalBars rows={report.sources.map(row => ({ key: row.name, label: row.name === 'direct' ? '直接访问 / 未提供来源' : row.name, value: row.count }))} label="注册数量" unit="people" /></section><section className="ra-panel"><h2>留存观察</h2><div className="ra-table-wrap"><table className="ra-data-table"><thead><tr><th>观察日</th><th className="number">回访 / 样本</th><th className="number">留存率</th></tr></thead><tbody><tr><td>D1</td><td className="number">{summary.d1.returned} / {summary.d1.eligible}</td><td className="number">{chartRate(summary.d1.rate)}</td></tr><tr><td>D7</td><td className="number">{summary.d7.returned} / {summary.d7.eligible}</td><td className="number">{chartRate(summary.d7.rate)}</td></tr></tbody></table></div><p className="ra-help">回访需在对应日期有效学习满 3 分钟，仅登录不算。第 1 / 7 天结束前的账号不会被当作流失。</p></section></div>
+    <section className="ra-panel"><h2>注册队列留存</h2><div className="ra-table-wrap"><table className="ra-data-table"><thead><tr><th>注册日期</th><th className="number">注册数</th><th className="number">D1</th><th className="number">D7</th></tr></thead><tbody>{report.cohorts.map(row => <tr key={row.day}><td>{row.day}</td><td className="number">{row.users}</td><td className="number">{chartRate(row.d1Rate)}</td><td className="number">{chartRate(row.d7Rate)}</td></tr>)}</tbody></table></div>{!report.cohorts.length && <p className="ra-help">注册后，队列会按日期自动积累。</p>}</section>
+    <section className="ra-panel"><h2>最近注册的用户</h2><div className="ra-table-wrap"><table className="ra-data-table"><thead><tr><th>用户名</th><th>注册时间</th><th>来源</th><th className="number">累计学习</th></tr></thead><tbody>{report.users.map(user => <tr key={user.id}><td>{user.username}</td><td>{new Date(user.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</td><td>{user.source}</td><td className="number">{Math.floor(user.seconds / 60)} 分钟</td></tr>)}</tbody></table></div>{!report.users.length && <p className="ra-help">暂无正式注册用户。</p>}<p className="ra-help">仅管理员可见，不返回密码、恢复码、视频、字幕或收藏内容。更新于 {new Date(report.generatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p></section></>;
+}
