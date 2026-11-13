@@ -31,3 +31,21 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 CREATE INDEX IF NOT EXISTS activity_user_day ON activity(user_id, day);
 CREATE INDEX IF NOT EXISTS activity_day ON activity(day, user_id);
+CREATE TABLE IF NOT EXISTS account_emails (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  verified_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS email_challenges (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  subject TEXT NOT NULL DEFAULT '',
+  code_hash TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  sent INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  used TEXT NOT NULL DEFAULT '',
+  UNIQUE(email,purpose,subject)
+);

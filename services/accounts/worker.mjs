@@ -1,3 +1,4 @@
+import { emailAction, normalizeEmail, validEmail } from './email.mjs';
 const DAY = 86400000;
 const json = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 const problem = (message, status = 400) => json({ error: message }, status);
@@ -16,7 +17,7 @@ async function equalSecret(first, second) {
   for (let index = 0; index < left.length; index++) difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
   return difference === 0;
 }
-const publicUser = user => ({ id: user.id, username: user.username, createdAt: user.created_at });
+const publicUser = user => ({ id: user.id, username: user.username, createdAt: user.created_at, ...(user.email ? { email: user.email } : {}) });
 async function rate(env, key, limit, period, now) {
   const bucket = Math.floor(now / period);
   const id = await digest(`${env.ACCOUNT_SECRET}:${key}:${bucket}`);
@@ -27,7 +28,7 @@ async function session(request, env, now) {
   const token = request.headers.get('x-user-session') || '';
   if (!/^[a-f0-9]{64}$/.test(token)) return null;
   const tokenHash = await digest(token);
-  const record = await env.DB.prepare('SELECT u.*,s.token_hash,s.activity_at,s.created_at AS session_created FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(tokenHash, new Date(now).toISOString()).first();
+  const record = await env.DB.prepare('SELECT u.*,e.email,s.token_hash,s.activity_at,s.created_at AS session_created FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN account_emails e ON e.user_id=u.id WHERE s.token_hash=? AND s.expires_at>?').bind(tokenHash, new Date(now).toISOString()).first();
   return record;
 }
 async function issueSession(env, user, now) {
@@ -84,8 +85,9 @@ export async function handle(request, env, now = Date.now()) {
   if (!env.ACCOUNT_SECRET || !env.DB) return problem('账号服务尚未配置', 503);
   if (!await equalSecret(request.headers.get('authorization'), `Bearer ${env.ACCOUNT_SECRET}`)) return problem('无权访问', 401);
   const path = url.pathname;
+  if (path.startsWith('/email-') && request.method !== 'POST') return problem('接口不存在', 404);
   const expected = { '/preflight': 'POST', '/signup': 'POST', '/login-check': 'POST', '/login-complete': 'POST', '/session': 'GET', '/logout': 'POST', '/recover': 'POST', '/recovery': 'POST', '/close': 'POST', '/summary': 'GET', '/activity': 'POST', '/admin/report': 'GET', '/admin/mark-test': 'POST' };
-  if (expected[path] !== request.method) return problem('接口不存在', 404);
+  if (expected[path] !== request.method && !['/email-code', '/email-sent', '/email-signup', '/email-recover', '/email-bind'].includes(path)) return problem('接口不存在', 404);
   let body = {};
   if (request.method === 'POST') {
     const text = await request.text();
@@ -95,6 +97,7 @@ export async function handle(request, env, now = Date.now()) {
   }
   const username = normalizeUsername(body.username);
   const clientKey = request.headers.get('x-client-key') || 'unknown';
+  if (path.startsWith('/email-')) return emailAction({ path, body, env, now, clientKey, user: path === '/email-bind' || body.purpose === 'bind' ? await session(request, env, now) : null, rate, hashPattern, issueSession });
   if (path === '/preflight') {
     if (!['signup', 'recover'].includes(body.kind)) return problem('请求无效');
     const limit = body.kind === 'signup' ? 5 : 8;
@@ -111,11 +114,12 @@ export async function handle(request, env, now = Date.now()) {
   }
   if (path === '/login-check') {
     if (!await rate(env, `login:${clientKey}`, 30, 900000, now) || !await rate(env, `user:${username}:${clientKey}`, 8, 900000, now)) return problem('尝试过于频繁，请 15 分钟后再试', 429);
-    const user = validUsername(username) ? await env.DB.prepare('SELECT id,username,password_hash FROM users WHERE username=?').bind(username).first() : null;
+    const email = normalizeEmail(body.username);
+    const user = validEmail(email) ? await env.DB.prepare('SELECT u.id,u.username,u.password_hash FROM users u JOIN account_emails e ON e.user_id=u.id WHERE e.email=?').bind(email).first() : validUsername(username) ? await env.DB.prepare('SELECT id,username,password_hash FROM users WHERE username=?').bind(username).first() : null;
     return json({ credential: user });
   }
   if (path === '/login-complete') {
-    const user = await env.DB.prepare('SELECT * FROM users WHERE id=? AND password_hash=?').bind(String(body.id || ''), String(body.passwordHash || '')).first();
+    const user = await env.DB.prepare('SELECT u.*,e.email FROM users u LEFT JOIN account_emails e ON e.user_id=u.id WHERE u.id=? AND u.password_hash=?').bind(String(body.id || ''), String(body.passwordHash || '')).first();
     if (!user) return problem('用户名或密码不正确', 401);
     return json(await issueSession(env, user, now));
   }
@@ -152,11 +156,13 @@ export async function handle(request, env, now = Date.now()) {
   if (path === '/close') {
     if (body.passwordHash !== user.password_hash) return problem('当前密码不正确', 401);
     const result = await env.DB.batch([
+      env.DB.prepare('DELETE FROM email_challenges WHERE (subject=? OR email IN (SELECT email FROM account_emails WHERE user_id=?)) AND EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)').bind(user.id, user.id, user.id, body.passwordHash),
+      env.DB.prepare('DELETE FROM account_emails WHERE user_id=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)').bind(user.id, user.id, body.passwordHash),
       env.DB.prepare('DELETE FROM activity WHERE user_id=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)').bind(user.id, user.id, body.passwordHash),
       env.DB.prepare('DELETE FROM sessions WHERE user_id=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND password_hash=?)').bind(user.id, user.id, body.passwordHash),
       env.DB.prepare('DELETE FROM users WHERE id=? AND password_hash=?').bind(user.id, body.passwordHash),
     ]);
-    if (!result[2].meta.changes) return problem('密码已变更，请重新登录', 401);
+    if (!result[4].meta.changes) return problem('密码已变更，请重新登录', 401);
     return json({ ok: true });
   }
   if (path === '/recovery') {

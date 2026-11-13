@@ -26,12 +26,12 @@ test('signup sets a secure HttpOnly cookie and never exposes password hashes or 
   try {
     global.fetch = async (input, init) => {
       if (String(input).endsWith('/preflight')) return Response.json({ ok: true });
-      const sent = JSON.parse(init!.body as string); assert.match(sent.passwordHash, /^scrypt\$/); assert.match(sent.recoveryHash, /^[a-f0-9]{64}$/); assert.equal(sent.password, undefined);
+      const sent = JSON.parse(init!.body as string); assert.match(sent.passwordHash, /^scrypt\$/); assert.equal(sent.recoveryHash, undefined); assert.equal(sent.email, 'test@example.com'); assert.equal(sent.code, '123456'); assert.equal(sent.password, undefined);
       return Response.json({ user: { id: 'user-a', username: 'test', createdAt: new Date().toISOString() }, token: 'a'.repeat(64) }, { status: 201 });
     };
-    const response = await call('signup', { username: 'test', password: 'password-fixture', accepted: true });
+    const response = await call('signup', { username: 'test', password: 'password-fixture', accepted: true, email: 'test@example.com', code: '123456', challengeId: '12345678-1234-1234-1234-123456789abc' });
     assert.equal(response.status, 201); const data = await response.json();
-    assert.equal(data.token, undefined); assert.equal(data.passwordHash, undefined); assert.ok(data.recoveryCode);
+    assert.equal(data.token, undefined); assert.equal(data.passwordHash, undefined); assert.equal(data.recoveryCode, undefined);
     const cookie = response.headers.get('set-cookie')!; assert.match(cookie, /HttpOnly/i); assert.match(cookie, /Secure/i); assert.match(cookie, /SameSite=lax/i);
   } finally { global.fetch = originalFetch; if (originalUrl === undefined) delete process.env.REPLAY_ACCOUNTS_URL; else process.env.REPLAY_ACCOUNTS_URL = originalUrl; if (originalSecret === undefined) delete process.env.REPLAY_ACCOUNTS_SECRET; else process.env.REPLAY_ACCOUNTS_SECRET = originalSecret; }
 });
@@ -62,4 +62,29 @@ test('user stats require the existing read-only key and omit user identity lists
     assert.equal(data.data.summary.registeredUsers, 3); assert.equal(data.data.users, undefined); assert.ok(!JSON.stringify(data).includes('private-name'));
     assert.equal((await stats(request('Bearer rps_' + 'a'.repeat(64), '?format=csv'), params)).status, 400);
   } finally { global.fetch = originalFetch; if (originalUrl === undefined) delete process.env.REPLAY_ACCOUNTS_URL; else process.env.REPLAY_ACCOUNTS_URL = originalUrl; if (originalSecret === undefined) delete process.env.REPLAY_ACCOUNTS_SECRET; else process.env.REPLAY_ACCOUNTS_SECRET = originalSecret; }
+});
+test('email requests activate only after accepted send and never return OTP, skipped or provider details', async () => {
+  const old = { fetch: global.fetch, url: process.env.REPLAY_ACCOUNTS_URL, secret: process.env.REPLAY_ACCOUNTS_SECRET, key: process.env.RESEND_API_KEY, domain: process.env.RESEND_EMAIL_DOMAIN };
+  Object.assign(process.env, { REPLAY_ACCOUNTS_URL: 'https://private.test', REPLAY_ACCOUNTS_SECRET: 'test-secret', RESEND_API_KEY: 'fixture-key', RESEND_EMAIL_DOMAIN: 'notify.example.com' });
+  try {
+    let accepted = false, activation = 0, skip = false;
+    global.fetch = async (input, init) => {
+      const url=String(input);
+      if(url.endsWith('/email-code')) return Response.json({challengeId:'12345678-1234-1234-1234-123456789abc', ...(skip ? {skipped:true} : {code:'123456'})});
+      if(url.endsWith('/email-sent')) { activation++; return Response.json({ok:true}); }
+      assert.equal(url,'https://api.resend.com/emails');
+      const sent=JSON.parse(init!.body as string); assert.match(sent.text,/123456/); assert.equal(sent.from,'剧说英语 <account@notify.example.com>');
+      return Response.json(accepted ? {id:'email-fixture'} : {message:'private provider error'}, {status:accepted?200:403});
+    };
+    const body={email:'test@example.com',purpose:'signup',accepted:true};
+    assert.equal((await call('email-code',{...body,accepted:false})).status,400);
+    const failed=await call('email-code',body);assert.equal(failed.status,503);assert.equal(activation,0);assert.ok(!(await failed.text()).includes('provider'));
+    accepted=true;
+    const response=await call('email-code',body);assert.equal(response.status,200);
+    const data=await response.json();assert.equal(data.code,undefined);assert.equal(data.skipped,undefined);assert.equal(activation,1);
+    skip=true;assert.equal((await call('email-code',{...body,purpose:'recover'})).status,200);assert.equal(activation,1);
+    assert.equal((await call('recovery',{password:'password-fixture'})).status,404);
+    assert.equal((await call('recover',{username:'test',password:'password-fixture',recoveryCode:'a'.repeat(32)})).status,400);
+    assert.equal((await call('bind-email',{password:'password-fixture'})).status,401);
+  } finally { global.fetch=old.fetch; for(const [key,value] of Object.entries({REPLAY_ACCOUNTS_URL:old.url,REPLAY_ACCOUNTS_SECRET:old.secret,RESEND_API_KEY:old.key,RESEND_EMAIL_DOMAIN:old.domain})) { if(value===undefined) delete process.env[key]; else process.env[key]=value; } }
 });

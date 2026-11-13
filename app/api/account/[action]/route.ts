@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { accountMode, accountService, AccountError, USER_COOKIE } from '@/lib/account-server';
-import { createRecoveryCode, hashPassword, recoveryDigest, validPassword, verifyPassword } from '@/lib/account-password';
+import { hashPassword, validPassword, verifyPassword } from '@/lib/account-password';
+import { normalizeEmail, validEmail, sendAccountCode } from '@/lib/account-email';
 import { normalizeUsername, validUsername } from '@/lib/account-types';
 import { sameOrigin } from '@/lib/admin-proxy';
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -28,7 +29,7 @@ function signedIn(request: NextRequest, data: { token: string; user: unknown }) 
 }
 async function handle(request: NextRequest, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  const methods: Record<string, string> = { signup: 'POST', login: 'POST', me: 'GET', summary: 'GET', logout: 'POST', recover: 'POST', recovery: 'POST', close: 'POST', activity: 'POST' };
+  const methods: Record<string, string> = { signup: 'POST', login: 'POST', me: 'GET', summary: 'GET', logout: 'POST', recover: 'POST', 'email-code': 'POST', 'bind-email': 'POST', close: 'POST', activity: 'POST' };
   if (methods[action] !== request.method) return reply({ error: '接口不存在' }, 404);
   if (request.method === 'POST' && !sameOrigin(request)) return reply({ error: '请求来源无效' }, 403);
   if (request.method === 'POST' && !request.headers.get('content-type')?.startsWith('application/json')) return reply({ error: '请求格式无效' }, 415);
@@ -36,7 +37,7 @@ async function handle(request: NextRequest, { params }: { params: Promise<{ acti
   const mode = accountMode();
   if (action === 'me' && (!token || mode !== 'accounts')) return reply({ user: null, mode });
   if (mode !== 'accounts') return reply({ error: '账号服务暂时不可用，你仍可先试学。' }, 503);
-  if (['summary', 'logout', 'recovery', 'close', 'activity'].includes(action) && !/^[a-f0-9]{64}$/.test(token)) return reply({ error: '请先登录' }, 401);
+  if (['summary', 'logout', 'bind-email', 'close', 'activity'].includes(action) && !/^[a-f0-9]{64}$/.test(token)) return reply({ error: '请先登录' }, 401);
   const clientKey = (request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-real-ip') || 'local').split(',')[0].trim().slice(0, 80);
   try {
     if (action === 'me') {
@@ -56,39 +57,47 @@ async function handle(request: NextRequest, { params }: { params: Promise<{ acti
     }
     if (action === 'activity') return reply(await accountService('/activity', 'POST', { eventId: body.eventId, seconds: body.seconds, action: body.action }, token));
     if (body.website) return reply({ error: '注册信息无效' }, 400);
+    const email = normalizeEmail(body.email);
+    if (action === 'email-code') {
+      if (!validEmail(email) || !['signup', 'recover', 'bind'].includes(body.purpose)) return reply({ error: '请填写有效的邮箱地址' }, 400);
+      if (body.purpose === 'signup' && body.accepted !== true) return reply({ error: '请先同意使用条款和隐私说明' }, 400);
+      if (body.purpose === 'bind') await accountService('/session', 'GET', undefined, token);
+      return reply(await sendAccountCode(email, body.purpose, token, clientKey));
+    }
     if (!validPassword(body.password)) return reply({ error: '密码需为 8—128 个字符' }, 400);
     const username = normalizeUsername(body.username);
-    if (action === 'signup' || action === 'recover') {
-      if (!validUsername(username)) return reply({ error: '用户名需为 2—24 个字，可使用中文、字母、数字、下划线和短横线' }, 400);
+    if (action === 'signup' || action === 'recover' || action === 'bind-email') {
+      if (action === 'signup' && !validUsername(username)) return reply({ error: '用户名需为 2—24 个字，可使用中文、字母、数字、下划线和短横线' }, 400);
       if (action === 'signup' && body.accepted !== true) return reply({ error: '请先阅读并同意使用条款和隐私说明' }, 400);
-      if (action === 'recover' && (typeof body.recoveryCode !== 'string' || !/^[a-fA-F0-9\s-]{32,50}$/.test(body.recoveryCode))) return reply({ error: '请填写完整的账号恢复码' }, 400);
+      if (!validEmail(email) || typeof body.code !== 'string' || !/^\d{6}$/.test(body.code) || typeof body.challengeId !== 'string' || !/^[a-f0-9-]{36}$/.test(body.challengeId)) return reply({ error: '请填写邮箱和有效的 6 位验证码' }, 400);
+      const proof = { email, code: body.code, challengeId: body.challengeId };
+      if (action === 'bind-email') {
+        const current = await accountService('/session', 'GET', undefined, token);
+        const result = await accountService('/login-check', 'POST', { username: current.user.username }, '', clientKey);
+        if (!await verifyPassword(body.password, result.credential?.password_hash) || result.credential?.id !== current.user.id) return reply({ error: '当前密码不正确' }, 401);
+        return reply(await accountService('/email-bind', 'POST', { ...proof, passwordHash: result.credential.password_hash }, token));
+      }
       await accountService('/preflight', 'POST', { kind: action }, '', clientKey);
-      const recoveryCode = createRecoveryCode();
       const passwordHash = await hashPassword(body.password);
       if (action === 'signup') {
-        const data = await accountService('/signup', 'POST', { username, passwordHash, recoveryHash: recoveryDigest(recoveryCode), source: body.source }, '', clientKey);
+        const data = await accountService('/email-signup', 'POST', { ...proof, username, passwordHash, source: body.source }, '', clientKey);
         const response = signedIn(request, data);
-        return new NextResponse(JSON.stringify({ ok: true, user: data.user, recoveryCode }), { status: 201, headers: { ...headers, 'Content-Type': 'application/json', 'Set-Cookie': response.headers.get('set-cookie')! } });
+        return new NextResponse(JSON.stringify({ ok: true, user: data.user }), { status: 201, headers: { ...headers, 'Content-Type': 'application/json', 'Set-Cookie': response.headers.get('set-cookie')! } });
       }
-      await accountService('/recover', 'POST', { username, passwordHash, recoveryHash: recoveryDigest(body.recoveryCode), newRecoveryHash: recoveryDigest(recoveryCode) }, '', clientKey);
-      const response = reply({ ok: true, recoveryCode }); response.cookies.delete(USER_COOKIE); return response;
+      await accountService('/email-recover', 'POST', { ...proof, passwordHash }, '', clientKey);
+      const response = reply({ ok: true }); response.cookies.delete(USER_COOKIE); return response;
     }
     if (action === 'login') {
       const result = await accountService('/login-check', 'POST', { username }, '', clientKey);
-      if (!await verifyPassword(body.password, result.credential?.password_hash) || !result.credential) return reply({ error: '用户名或密码不正确' }, 401);
+      if (!await verifyPassword(body.password, result.credential?.password_hash) || !result.credential) return reply({ error: '邮箱、用户名或密码不正确' }, 401);
       return signedIn(request, await accountService('/login-complete', 'POST', { id: result.credential.id, passwordHash: result.credential.password_hash }));
     }
-    if (action === 'recovery' || action === 'close') {
+    if (action === 'close') {
       const current = await accountService('/session', 'GET', undefined, token);
       const result = await accountService('/login-check', 'POST', { username: current.user.username }, '', clientKey);
       if (!await verifyPassword(body.password, result.credential?.password_hash) || result.credential?.id !== current.user.id) return reply({ error: '当前密码不正确' }, 401);
-      if (action === 'close') {
-        await accountService('/close', 'POST', { passwordHash: result.credential.password_hash }, token);
-        const response = reply({ ok: true }); response.cookies.delete(USER_COOKIE); return response;
-      }
-      const recoveryCode = createRecoveryCode();
-      await accountService('/recovery', 'POST', { passwordHash: result.credential.password_hash, recoveryHash: recoveryDigest(recoveryCode) }, token);
-      return reply({ ok: true, recoveryCode });
+      await accountService('/close', 'POST', { passwordHash: result.credential.password_hash }, token);
+      const response = reply({ ok: true }); response.cookies.delete(USER_COOKIE); return response;
     }
     return reply({ error: '接口不存在' }, 404);
   } catch (error) { return reply({ error: error instanceof AccountError ? error.message : '连接暂时不稳定，请稍后重试。' }, error instanceof AccountError ? error.status : 503); }

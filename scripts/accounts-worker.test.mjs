@@ -14,7 +14,8 @@ function fixture() {
     const api = { bind(...args) { values = args; return api; }, async first() { return statement.get(...values) || null; }, async all() { return { results: statement.all(...values) }; }, async run() { const result = statement.run(...values); return { meta: { changes: Number(result.changes) } }; } };
     return api;
   };
-  const env = { ACCOUNT_SECRET: 'fixture-private-secret', DB: { prepare, async batch(statements) { db.exec('BEGIN'); try { const result = []; for (const statement of statements) result.push(await statement.run()); db.exec('COMMIT'); return result; } catch (error) { db.exec('ROLLBACK'); throw error; } } } };
+  let transaction = Promise.resolve();
+  const env = { ACCOUNT_SECRET: 'fixture-private-secret', DB: { prepare, batch(statements) { const result=transaction.then(async()=>{ db.exec('BEGIN'); try { const values=[]; for(const statement of statements) values.push(await statement.run()); db.exec('COMMIT'); return values; } catch(error) { db.exec('ROLLBACK'); throw error; } }); transaction=result.catch(()=>{}); return result; } } };
   const call = async (path, body, token = '', now = NOW, authorized = true) => {
     const response = await handle(new Request(`https://accounts.test${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { ...(authorized ? { authorization: `Bearer ${env.ACCOUNT_SECRET}` } : {}), 'x-user-session': token, 'x-client-key': 'fixture-ip' }, body: body === undefined ? undefined : JSON.stringify(body) }), env, now);
     return { status: response.status, data: await response.json() };
@@ -126,4 +127,81 @@ test('account closure requires current credential and removes only that users da
   assert.equal((await call('/session', undefined, first.token)).status, 401);
   assert.equal((await call('/session', undefined, second.token)).status, 200);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM activity').get().n, 0);
+});
+const emailChallenge = async (call, email, purpose = 'signup', token = '', now = NOW) => {
+  const response = await call('/email-code', { email, purpose }, token, now);
+  assert.equal(response.status, 200);
+  await call('/email-sent', { challengeId: response.data.challengeId }, '', now);
+  return { email, code: response.data.code, challengeId: response.data.challengeId };
+};
+test('email signup proves ownership, stores a digest and rejects cross-purpose, replay and duplicate mailbox', async () => {
+  const { call, db } = fixture();
+  const proof = await emailChallenge(call, 'Test@Example.com');
+  assert.notEqual(db.prepare('SELECT code_hash FROM email_challenges').get().code_hash, proof.code);
+  assert.equal((await call('/email-recover', { ...proof, passwordHash: HASH })).status, 401);
+  const result = await call('/email-signup', { ...proof, username: '邮箱新用户', passwordHash: HASH });
+  assert.equal(result.status, 201); assert.equal(result.data.user.email, 'test@example.com');
+  assert.equal((await call('/email-signup', { ...proof, username: '重放用户', passwordHash: HASH })).status, 401);
+  assert.equal((await call('/email-code', { email: 'test@example.com', purpose: 'signup' })).status, 409);
+  assert.equal((await call('/login-check', { username: 'TEST@example.com' })).data.credential.id, result.data.user.id);
+  assert.equal((await call('/session', undefined, result.data.token)).data.user.email, 'test@example.com');
+  assert.equal((await call('/close', { passwordHash: HASH }, result.data.token)).status, 200);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_emails').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_challenges').get().n, 0);
+});
+test('email codes stay inactive before send, expire, lock after five wrong attempts and observe cooldown', async () => {
+  const { call } = fixture();
+  const pending = (await call('/email-code', { email: 'one@example.com', purpose: 'signup' })).data;
+  const proof = { email: 'one@example.com', code: pending.code, challengeId: pending.challengeId, username: '错误测试', passwordHash: HASH };
+  assert.equal((await call('/email-signup', proof)).status, 401);
+  assert.equal((await call('/email-code', { email: proof.email, purpose: 'signup' })).status, 429);
+  await call('/email-sent', { challengeId: pending.challengeId });
+  const wrong = String((Number(proof.code) + 1) % 1000000).padStart(6, '0');
+  for (let i=0;i<5;i++) assert.equal((await call('/email-signup', { ...proof, code: wrong })).status, 401);
+  assert.equal((await call('/email-signup', proof)).status, 401);
+  const fresh = await emailChallenge(call, proof.email, 'signup', '', NOW + 60000);
+  assert.equal((await call('/email-signup', { ...proof, ...fresh }, '', NOW + 660000)).status, 401);
+  assert.equal((await call('/email-code', { email: 'bad', purpose: 'signup' })).status, 400);
+});
+test('old account email binding preserves ID and activity, verifies password and account, disables recovery codes', async () => {
+  const { call, signup, db } = fixture();
+  const a=await signup('老账号'), b=await signup('另一个账号');
+  await call('/activity', { eventId: crypto.randomUUID(), seconds: 20, action: 'play' }, a.token, NOW + 20000);
+  const proof = await emailChallenge(call, 'old@example.com', 'bind', a.token);
+  assert.equal((await call('/email-bind', { ...proof, passwordHash: HASH }, b.token)).status, 401);
+  assert.equal((await call('/email-bind', { ...proof, passwordHash: NEW_HASH }, a.token)).status, 401);
+  const bound=await call('/email-bind', { ...proof, passwordHash: HASH }, a.token);
+  assert.equal(bound.status,200); assert.equal(bound.data.user.id,a.user.id);
+  assert.equal((await call('/summary',undefined,a.token)).data.today.seconds,20);
+  assert.equal(db.prepare('SELECT recovery_hash FROM users WHERE id=?').get(a.user.id).recovery_hash,'disabled');
+  assert.equal((await call('/email-bind', { ...proof, passwordHash: HASH }, a.token)).status,401);
+  assert.equal((await call('/email-code',{ email:'not@example.com',purpose:'bind' })).status,401);
+});
+test('email reset revokes all old sessions, checks ownership and prevents code replay',async()=>{
+  const { call,signup }=fixture();const user=await signup();
+  const bind=await emailChallenge(call,'reset@example.com','bind',user.token);
+  await call('/email-bind',{...bind,passwordHash:HASH},user.token);
+  const other=(await call('/login-complete',{id:user.user.id,passwordHash:HASH})).data;
+  const unknown=await call('/email-code',{email:'unknown@example.com',purpose:'recover'});
+  assert.equal(unknown.data.skipped,true);assert.equal(unknown.data.code,undefined);
+  const proof=await emailChallenge(call,'reset@example.com','recover');
+  assert.equal((await call('/email-recover',{...proof,email:'unknown@example.com',passwordHash:NEW_HASH})).status,401);
+  assert.equal((await call('/email-recover',{...proof,passwordHash:NEW_HASH})).status,200);
+  for(const token of [user.token,other.token]) assert.equal((await call('/session',undefined,token)).status,401);
+  assert.equal((await call('/login-complete',{id:user.user.id,passwordHash:HASH})).status,401);
+  assert.equal((await call('/login-complete',{id:user.user.id,passwordHash:NEW_HASH})).status,200);
+  assert.equal((await call('/email-recover',{...proof,passwordHash:NEW_HASH})).status,401);
+});
+test('email uniqueness rolls back the consumed code so the user can fix the username',async()=>{
+  const {call,signup,db}=fixture();await signup('占用名字');
+  const proof=await emailChallenge(call,'unique@example.com');
+  assert.equal((await call('/email-signup',{...proof,username:'占用名字',passwordHash:HASH})).status,409);
+  assert.equal(db.prepare('SELECT used FROM email_challenges WHERE id=?').get(proof.challengeId).used,'');
+  assert.equal((await call('/email-signup',{...proof,username:'可用名字',passwordHash:HASH})).status,201);
+});
+
+test('concurrent use of a correct email code creates exactly one account and one binding',async()=>{
+ const {call,db}=fixture();const proof=await emailChallenge(call,'race@example.com');
+ const results=await Promise.all([call('/email-signup',{...proof,username:'并发一',passwordHash:HASH}),call('/email-signup',{...proof,username:'并发二',passwordHash:HASH})]);
+ assert.deepEqual(results.map(r=>r.status).sort(),[201,401]);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_emails').get().n,1);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n,1);
 });

@@ -6,6 +6,7 @@ import { storageKey } from '@/lib/account-storage';
 import { learningStore, loadLearningSession } from '@/lib/learning-session';
 import type { SavedWord } from '@/lib/types';
 import LearningCalendar from './LearningCalendar';
+import EmailCodeFields from './EmailCodeFields';
 const minutes = (seconds: number) => seconds > 0 && seconds < 60 ? '不到 1 分钟' : `${Math.floor(seconds / 60)} 分钟`;
 function oldWords(): SavedWord[] {
   const result: SavedWord[] = [];
@@ -19,7 +20,7 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
   const [year, setYear] = useState(initial.history?.year || Number(initial.today.day.slice(0, 4)));
   const [calendarLoading, setCalendarLoading] = useState(false), [calendarError, setCalendarError] = useState('');
   const [legacy, setLegacy] = useState(false), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const [password, setPassword] = useState(''), [recoveryCode, setRecoveryCode] = useState('');
+  const [password, setPassword] = useState(''), [emailProof, setEmailProof] = useState({ email: '', code: '', challengeId: '' });
   const [closePassword, setClosePassword] = useState(''), [closeConfirmed, setCloseConfirmed] = useState(false);
   const refreshLocal = async () => { setSaved(loadSavedWords().length); try { setResume((await loadLearningSession())?.session.videoName || ''); } catch {} };
   useEffect(() => {
@@ -72,13 +73,14 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
     } catch (issue) { setError(issue instanceof Error ? issue.message : '关联未完成，原记录仍然保留。'); }
     finally { setBusy(false); }
   }
-  async function recovery(event: React.FormEvent) {
+  async function bindEmail(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError('');
     try {
-      const response = await fetch('/api/account/recovery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+      if (!emailProof.challengeId) throw new Error('请先发送邮箱验证码');
+      const response = await fetch('/api/account/bind-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password, ...emailProof }), signal: AbortSignal.timeout(20000) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error);
-      setRecoveryCode(data.recoveryCode); setPassword('');
-    } catch (issue) { setError(issue instanceof Error ? issue.message : '生成失败'); } finally { setBusy(false); }
+      setSummary(value => ({ ...value, user: data.user })); setPassword(''); setMessage('邮箱已绑定，原账号和学习记录已保留。');
+    } catch (issue) { setError(issue instanceof Error ? issue.message : '绑定失败'); } finally { setBusy(false); }
   }
   async function logout() {
     setBusy(true); setError('');
@@ -99,8 +101,8 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
     <LearningCalendar key={year} history={summary.history?.year === year ? summary.history : undefined} year={year} years={summary.history?.years || [year]} goalSeconds={summary.goalSeconds} loading={calendarLoading} error={calendarError} onYearChange={selectYear} />
     <section className="account-card account-review-entry"><div><h2>把收藏的表达再练一次</h2><p>这台设备上有 {saved} 个收藏。翻看原句、听发音，再检查是否记住。</p></div><a href="/review" className="btn btn-secondary">去复习 →</a></section>
     {legacy && <section className="account-card"><h2>这台设备还有以前的学习记录</h2><p>可以把旧视频进度、译文缓存和试学收藏关联到当前账号的本地空间，原件保留，内容不会上传。已有账号视频不会被覆盖。</p><button className="btn btn-secondary" type="button" onClick={adopt} disabled={busy}>{busy ? '正在关联…' : '关联本机原有记录'}</button></section>}
-    <details className="account-card account-security"><summary>账号安全与恢复码</summary><p>账号：{summary.user.username}。注册于 {new Date(summary.user.createdAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}。账号登录有效期最长 30 天；忘记密码时使用恢复码找回。</p><form onSubmit={recovery} className="account-form"><label>当前密码<input type="password" autoComplete="current-password" required minLength={8} maxLength={128} value={password} onChange={event => setPassword(event.target.value)} /></label><button type="submit" className="btn btn-secondary" disabled={busy}>重新生成恢复码</button></form>{recoveryCode && <><code className="account-recovery-code">{recoveryCode}</code><p>请复制并妥善保存，新码只显示这一次，旧恢复码已失效。</p></>}</details>
+    <details className="account-card account-security" open={!summary.user.email}><summary>账号安全与邮箱</summary><p>账号：{summary.user.username}。注册于 {new Date(summary.user.createdAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}。账号登录有效期最长 30 天。</p>{summary.user.email ? <p>已验证邮箱：{summary.user.email}。可用邮箱登录，忘记密码时通过邮件验证码找回。</p> : <><p>绑定邮箱后可通过邮件找回密码，原账号和学习记录继续保留。</p><form onSubmit={bindEmail} className="account-form"><fieldset disabled={busy} className="account-form-fields"><EmailCodeFields purpose="bind" onChange={setEmailProof} /><label>当前密码<input type="password" autoComplete="current-password" required minLength={8} maxLength={128} value={password} onChange={event => setPassword(event.target.value)} /></label><button type="submit" className="btn btn-secondary" disabled={busy}>验证并绑定邮箱</button></fieldset></form></>}</details>
     <details className="account-card account-security"><summary>注销账号</summary><p>注销会删除云端账号、登录与学习时长记录，无法恢复。电脑上的原视频和浏览器本地内容不会被删除。</p><form className="account-form" onSubmit={closeAccount}><label>当前密码<input type="password" autoComplete="current-password" required minLength={8} maxLength={128} value={closePassword} onChange={event => setClosePassword(event.target.value)} /></label><label className="account-checkbox"><input type="checkbox" required checked={closeConfirmed} onChange={event => setCloseConfirmed(event.target.checked)} />我确认删除云端账号及学习记录</label><button className="btn btn-secondary" disabled={busy || !closeConfirmed}>注销云端账号</button></form></details>
-    <p className="account-footnote">账号保存用户名和学习时间，视频、字幕、收藏与具体播放位置保存在本机。换设备需重新选择素材；自带翻译接口设置不会随账号上传。<a href="/privacy">隐私说明</a></p>
+    <p className="account-footnote">账号保存用户名、已验证邮箱和学习时间，视频、字幕、收藏与具体播放位置保存在本机。换设备需重新选择素材；自带翻译接口设置不会随账号上传。<a href="/privacy">隐私说明</a></p>
   </div>;
 }
