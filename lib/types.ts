@@ -48,7 +48,16 @@ export interface SavedWord {
   sentence: string;
   translation: string;
   addedAt: number;
+  clip?: SavedLineClip;
 }
+
+export type SavedLineClip = {
+  videoId: string;
+  videoName: string;
+  start: number;
+  end: number;
+  source: { kind: 'sample'; video: string } | { kind: 'file'; name: string; size: number; type: string; lastModified: number };
+};
 
 export const difficultyLabel: Record<Difficulty, string> = {
   easy: '入门',

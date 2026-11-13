@@ -28,9 +28,9 @@ export default function LearningActivity({ enabled, review = false }: { enabled:
     };
     const tick = () => {
       const now = performance.now(), delta = Math.min(2, Math.max(0, (now - previous) / 1000)); previous = now;
-      const video = document.querySelector('video');
+      const videoActive = Array.from(document.querySelectorAll<HTMLMediaElement>('[data-page="learn"] video,[data-page="learn"] audio,[data-original-line] video,[data-original-line] audio')).some(video => !video.paused && !video.ended && video.readyState >= 2);
       const voiceActive = document.querySelector('[data-speaking-practice][data-recording="true"]') || Array.from(document.querySelectorAll<HTMLAudioElement>('[data-speaking-practice] audio')).some(audio => !audio.paused && !audio.ended && audio.readyState >= 2);
-      const active = review ? Date.now() - interaction < 60000 : (video && !video.paused && !video.ended && video.readyState >= 2) || voiceActive;
+      const active = review ? Date.now() - interaction < 60000 || videoActive : videoActive || voiceActive;
       if (document.visibilityState === 'visible' && active) seconds += delta;
       if (Date.now() - lastSend >= 20000) send();
     };

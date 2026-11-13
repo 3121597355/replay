@@ -25,8 +25,8 @@ export default function HomePage() {
             看剧练听力<br />跟读练口语
           </h1>
           <p className="home-intro home-hero-copy [animation-delay:60ms]">
-            导入自己的视频和字幕，边看边练。
-            <span className="home-hero-features">逐句精听 · 跟读查词 · 收藏 · 导出 Anki</span>
+            电影、美剧、播客、新闻，都能成为英语素材。
+            <span className="home-hero-features">导入视频或音频＋字幕 · 逐句精听 · 录音跟读 · 收藏原句回放</span>
           </p>
           <div className="home-intro home-hero-actions [animation-delay:120ms]">
             <Link href="/learn?trial=1" className="btn btn-primary">
@@ -44,18 +44,18 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-[1120px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 sm:py-12">
           {[
             {
-              title: '视频不上传',
-              text: '视频、字幕和收藏由浏览器保存；账号只记录学习时间和天数。',
+              title: '视频、音频不上传',
+              text: '素材、字幕和收藏保存在本机；账号记录学习时间和天数。',
               icon: 'M10 1.8 17 4.5v5.1c0 4.2-2.8 7.1-7 8.6-4.2-1.5-7-4.4-7-8.6V4.5l7-2.7Zm-3 8.2 2.2 2.2 4-4',
             },
             {
               title: '逐句精听',
-              text: '字幕跟随播放进度，可以循环一句、切换译文和调整语速。',
+              text: '看剧或听播客，都能跟随字幕循环一句、调整语速，再录音跟读。',
               icon: 'M10 2.2c4.3 0 7.8 3.5 7.8 7.8s-3.5 7.8-7.8 7.8S2.2 14.3 2.2 10 5.7 2.2 10 2.2Zm-2.2 5v5.6L12.5 10 7.8 7.2Z',
             },
             {
-              title: '导出到 Anki',
-              text: '收藏的表达可以生成卡片，也可以导出双语字幕继续复习。',
+              title: '收藏原句，再听一遍',
+              text: '翻卡复习时重放原声，找回语境和语气；也能导出到 Anki。',
               icon: 'M3 3h14v11H3V3Zm3.5 14h7M10 14v3M6.5 7h7M6.5 10h4.5',
             },
           ].map((item, index) => (
@@ -125,7 +125,7 @@ export default function HomePage() {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0" aria-hidden="true">
             <path d="M8 1.8 13.5 4v4c0 3.3-2.2 5.6-5.5 6.8C4.7 13.6 2.5 11.3 2.5 8V4L8 1.8Zm-2.3 6.5 1.7 1.7 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          视频和字幕只在浏览器中读取，不会上传到服务器。
+          视频、音频和字幕只在浏览器中读取，不会上传到服务器。
         </div>
       </div>
     </HomeMotion>

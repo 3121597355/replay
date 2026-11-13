@@ -122,9 +122,9 @@ function saveLearningSession(session: LearningSession, video?: File): Promise<Se
       tx.objectStore(SESSION_STORE).put({ session: remembered.session, hasMedia: remembered.hasMedia } satisfies StoredSession, KEY);
       await committed;
       const saved = source.kind === 'sample' || remembered.hasMedia;
-      return { saved, message: saved ? undefined : '视频未能保存在浏览器中，字幕和进度已保存。下次选择同一个视频即可继续。' };
+      return { saved, message: saved ? undefined : '素材未能保存在浏览器中，字幕和进度已保存。下次选择同一个视频或音频即可继续。' };
     } catch {
-      return { saved: false, message: '当前浏览器无法保存学习记录。离开后可能需要重新选择视频和字幕。' };
+      return { saved: false, message: '当前浏览器无法保存学习记录。离开后可能需要重新选择素材和字幕。' };
     } finally { db?.close(); }
   });
 }

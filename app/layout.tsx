@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: `${siteName}｜免费看剧练听力与口语`, template: `%s · ${siteName}` },
   applicationName: siteName,
   description: siteDescription,
-  keywords: ['看剧学英语', '美剧', '英文字幕', 'Anki', '英语听力', '逐句精听'],
+  keywords: ['看剧学英语', '美剧', '播客学英语', '英语新闻', '音频精听', '英文字幕', 'Anki', '英语听力', '口语跟读', '逐句精听'],
   openGraph: {
     title: `${siteName}｜免费看剧练听力与口语`,
     description: siteDescription,

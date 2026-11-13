@@ -7,6 +7,7 @@ import type { SavedWord } from '@/lib/types';
 import LearningActivity from './LearningActivity';
 import VocabularyFlipCard from '@/components/VocabularyFlipCard';
 import VocabularyMotionToggle from '@/components/VocabularyMotion';
+import SavedLineReplay, { stopOriginalLinePlayback } from '@/components/SavedLineReplay';
 import { parseReviewSchedule, type ReviewSchedule as Schedule } from '@/lib/review-schedule';
 const identity = (word: SavedWord) => `${word.word.toLowerCase()}:${word.addedAt}`;
 export default function ReviewCards() {
@@ -29,9 +30,9 @@ export default function ReviewCards() {
     {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <section className="account-card account-flashcard">
       <div className="account-card-counter">{index + 1} / {cards.length}<VocabularyMotionToggle /></div>
       <VocabularyFlipCard key={identity(current)} flipped={answer} onFlip={setAnswer} label={current.word || current.sentence} answerLabel={current.translation || '这条收藏还没有译文'}
-        front={<><span className="vocab-flip-label">先回忆，再翻面</span><h2>{current.word}</h2><p className="account-review-sentence" lang="en">{current.sentence}</p></>}
+        front={<><span className="vocab-flip-label">先回忆，再翻面</span><h2>{current.word}</h2>{current.sentence !== current.word && <p className="account-review-sentence" lang="en">{current.sentence}</p>}</>}
         back={<><span className="vocab-flip-label">释义与译文</span><p className="account-review-answer">{current.translation || '这条收藏还没有译文，可以回到学习台补充。'}</p></>} />
-      <button type="button" className="account-text-link" onClick={() => speak(current.word || current.sentence)}>听发音 🔊</button>
+      <div className="account-original-actions"><SavedLineReplay key={identity(current)} word={current} /><button type="button" className="account-text-link" onClick={() => { stopOriginalLinePlayback(); speak(current.word || current.sentence); }}>听单词发音 🔊</button></div>
       {answer ? <div className="account-button-row"><button type="button" className="btn btn-secondary" onClick={() => finish(false)}>还不熟，稍后再练</button><button type="button" className="btn btn-primary" onClick={() => finish(true)}>记住了，下一句</button></div> : <button type="button" className="btn btn-primary account-full-button" onClick={() => setAnswer(true)}>翻看释义</button>}
     </section> : <section className="account-card account-flashcard"><h2>{cards.length ? '这轮复习完成了。' : '今天没有待复习的收藏。'}</h2><p>{cards.length ? `已复习 ${cards.length} 个表达，下次按复习时间继续。` : '去学习台收藏几个词和句子，回来就能练。已有收藏按计划到期后会出现在这里。'}</p><a href="/learn" className="btn btn-primary">回学习台</a></section>}
     <a href="/account" className="account-text-link">← 返回我的学习</a></div>;

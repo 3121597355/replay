@@ -30,7 +30,7 @@ export default function SpeakingPractice({ cue, cueNumber, onListen, onPause }: 
 
   useEffect(() => {
     const stopWhenHidden = () => { if (document.visibilityState === 'hidden') { generation.current++; stopRef.current(); audio.current?.pause(); stream.current?.getTracks().forEach(track => track.stop()); setPhase(value => value === 'requesting' ? 'idle' : value); } };
-    const stopVideo = (event: Event) => { if (event.target instanceof HTMLVideoElement) { if (recorder.current?.state === 'recording') event.target.pause(); else audio.current?.pause(); } };
+    const stopVideo = (event: Event) => { if (event.target instanceof HTMLMediaElement && event.target !== audio.current) { if (recorder.current?.state === 'recording') event.target.pause(); else audio.current?.pause(); } };
     document.addEventListener('visibilitychange', stopWhenHidden); document.addEventListener('play', stopVideo, true);
     return () => {
       generation.current++; document.removeEventListener('visibilitychange', stopWhenHidden); document.removeEventListener('play', stopVideo, true);

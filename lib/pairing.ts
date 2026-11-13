@@ -35,7 +35,7 @@ export interface Episode {
   bestLang?: SubLanguage;
 }
 
-const VIDEO_EXT = new Set(['mkv', 'mp4', 'webm', 'avi', 'mov', 'm4v', 'ts', 'flv', 'wmv']);
+const VIDEO_EXT = new Set(['mkv', 'mp4', 'webm', 'avi', 'mov', 'm4v', 'ts', 'flv', 'wmv', 'mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'flac']);
 const SUB_EXT = new Set(['srt', 'vtt', 'ass', 'ssa', 'sub']);
 
 export function extOf(name: string): string {

@@ -40,7 +40,7 @@ import {
   type SubtitleTrack,
   type ExtractStage,
 } from '@/lib/ffmpeg';
-import type { Cue, SavedWord } from '@/lib/types';
+import type { Cue, SavedLineClip, SavedWord } from '@/lib/types';
 import { Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import WordCard, { type LookupState } from '@/components/WordCard';
@@ -55,6 +55,10 @@ import LearningActivity from './account/LearningActivity';
 import SavedVocabularyCard from './SavedVocabularyCard';
 import VocabularyMotionToggle from './VocabularyMotion';
 import SpeakingPractice from './SpeakingPractice';
+import { savedClipFor, validSavedClip } from '@/lib/saved-line';
+import { savedMediaStore } from '@/lib/saved-media';
+import { isAudioSource, MEDIA_ACCEPT } from '@/lib/media';
+import { getStorageOwner } from '@/lib/account-storage';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -64,7 +68,8 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   const fromSlug = params.get('from');
   const fromWork = fromSlug ? getWork(fromSlug) : undefined;
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLMediaElement | null>(null);
+  const attachPlayer = useCallback((player: HTMLMediaElement | null) => { videoRef.current = player; }, []);
   const speakingEndRef = useRef<number>();
   const listRef = useRef<HTMLDivElement>(null);
   const cueRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -72,6 +77,8 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   const [videoUrl, setVideoUrl] = useState<string>();
   const [videoFile, setVideoFile] = useState<File>();
   const [videoName, setVideoName] = useState<string>();
+  const audioOnly = isAudioSource(videoFile || (videoName ? { name: videoName, type: '' } : undefined));
+  const Player = audioOnly ? 'audio' : 'video';
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionNotice, setSessionNotice] = useState<string>();
   const [missingSession, setMissingSession] = useState<LearningSession | null>(null);
@@ -123,6 +130,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
   // 点词查义
   const [lookupState, setLookupState] = useState<LookupState | null>(null);
+  const lookupClipRef = useRef<{ sentence: string; clip?: SavedLineClip; file?: File }>();
 
   /**
    * 当前字幕的内容指纹，翻译缓存按它索引。
@@ -158,7 +166,15 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
   const cueTokens = useMemo(() => cues.map((c) => tokenize(c.text)), [cues]);
 
-  async function openLookup(word: string, sentence: string) {
+  function clipForCue(cue?: Cue) {
+    return cue && sessionIdRef.current && sessionSourceRef.current && videoName
+      ? savedClipFor(cue, sessionIdRef.current, videoName, sessionSourceRef.current) : undefined;
+  }
+  function cacheCollectionClip(clip?: SavedLineClip, file?: File) {
+    if (clip && file) void savedMediaStore().save(clip, file).then(saved => { if (!saved) flash('收藏和原句时间点已保存；回放原片未能缓存，下次可重新选择原片。'); });
+  }
+  async function openLookup(word: string, sentence: string, cue?: Cue) {
+    lookupClipRef.current = { sentence, clip: clipForCue(cue), file: videoFile };
     trackEvent('word_lookup');
     setLookupState({ word, sentence, result: null, loading: true });
     try {
@@ -172,16 +188,23 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   }
 
   function saveWord(word: string, sentence: string, def: string) {
+    const origin = lookupClipRef.current?.sentence === sentence ? lookupClipRef.current : undefined;
     const exists = saved.some((s) => s.word.toLowerCase() === word.toLowerCase());
     if (exists) {
+      const previous = saved.find(item => item.word.toLowerCase() === word.toLowerCase());
+      if (previous?.sentence === sentence && !validSavedClip(previous.clip) && origin?.clip) {
+        setSaved(items => items.map(item => item === previous ? { ...item, clip: origin.clip } : item));
+        cacheCollectionClip(origin.clip, origin.file); flash('已补全这条收藏的原句回放'); return;
+      }
       flash('这个词已经在生词本里了');
       return;
     }
     setSaved((prev) => [
       ...prev,
-      { word, sentence, translation: def, addedAt: Date.now() },
+      { word, sentence, translation: def, addedAt: Date.now(), ...(origin?.clip ? { clip: origin.clip } : {}) },
     ]);
     flash(`已收藏 ${word}`);
+    cacheCollectionClip(origin?.clip, origin?.file);
     trackEvent('word_save');
   }
 
@@ -232,6 +255,10 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   useEffect(() => {
     setCfg(loadConfig());
     setSaved(loadSavedWords());
+    const owner = getStorageOwner();
+    const update = (event: Event) => { if ((event as CustomEvent<string>).detail === owner) setSaved(loadSavedWords(owner)); };
+    window.addEventListener('replay:saved-words-updated', update);
+    return () => window.removeEventListener('replay:saved-words-updated', update);
   }, []);
 
   useEffect(() => {
@@ -249,7 +276,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     if (!videoUrl || videoStatus !== 'loading') return;
     const timer = setTimeout(() => {
       if ((videoRef.current?.readyState ?? 0) < 3) {
-        setVideoError('视频加载较慢，请检查网络后重试。字幕已就绪，可以先阅读。');
+        setVideoError('素材加载较慢，请检查文件或网络后重试。字幕已就绪，可以先阅读。');
         setVideoStatus('error');
       }
     }, 20000);
@@ -302,8 +329,8 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     const missing = saved.source.kind === 'file' && !file;
     setMissingSession(missing ? saved : null);
     setVideoUrl(saved.source.kind === 'sample' ? sample.video : file ? URL.createObjectURL(file) : undefined);
-    setSessionNotice(missing ? '字幕和进度已恢复。请选择原视频继续，学习记录会保留。' : undefined);
-    if (!missing) flash('已恢复上次的视频、字幕和进度');
+    setSessionNotice(missing ? '字幕和进度已恢复。请选择原素材继续，学习记录会保留。' : undefined);
+    if (!missing) flash('已恢复上次的素材、字幕和进度');
   }
 
   useEffect(() => {
@@ -378,7 +405,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     sessionIdRef.current = id; sessionSourceRef.current = file ? fileLearningSource(file) : { kind: 'sample' };
     sessionTimeRef.current = 0; restoreTimeRef.current = 0;
     setSessionLoading(false); setMissingSession(null);
-    setSessionNotice(file ? '正在将视频保存在此浏览器，保存后退出也可继续。' : undefined);
+    setSessionNotice(file ? '正在将素材保存在此浏览器，保存后退出也可继续。' : undefined);
     const initial: LearningSession = { id, source: sessionSourceRef.current, videoName: name,
       cues: [], hash: null, time: 0, selected: -1, rate, loop, showTrans, updatedAt: Date.now() };
     sessionSnapshotRef.current = initial;
@@ -423,12 +450,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     }
     const url = URL.createObjectURL(file);
     setVideoSource(url, file.name, file);
+    const selectedSession = sessionIdRef.current;
     trackEvent('video_import');
     flash(`已加载：${file.name}`);
 
     // 立刻探一下能不能读到内容，别等点抽字幕才发现
     const ok = await canRead(file);
-    if (!ok) {
+    if (!ok && sessionIdRef.current === selectedSession) {
       setVideoFile(undefined);
       flash(
         '这个文件读不到内容（云盘占位 / 被占用 / 在网络盘上）。视频能播，但抽不了字幕——复制到本地硬盘再试。'
@@ -437,7 +465,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   }
 
   async function clearCurrentLearning() {
-    if (!window.confirm('清除当前浏览器保存的视频、字幕和这次播放进度？生词本和电脑里的原文件会保留。')) return;
+    if (!window.confirm('清除当前浏览器保存的素材、字幕和这次播放进度？生词本和电脑里的原文件会保留。')) return;
     restoreGenerationRef.current++;
     sampleRequestRef.current?.abort(); videoRef.current?.pause();
     if (subHashRef.current) clearProgress(subHashRef.current);
@@ -704,7 +732,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
       const eps = pairEpisodes(files);
       if (eps.length === 0) {
-        flash('这个文件夹里没找到视频或字幕文件');
+        flash('这个文件夹里没找到视频、音频或字幕文件');
         return;
       }
       setEpisodes(eps);
@@ -727,7 +755,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   /** 打开某一集：读视频 + 读字幕 */
   async function openEpisode(ep: Episode) {
     if (!ep.video) {
-      flash('这一集只有字幕，没有视频文件');
+      flash('这一集只有字幕，没有视频或音频文件');
       return;
     }
     setShowPicker(false);
@@ -735,7 +763,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
     const vf = await readHandle(ep.video.handle);
     if (!vf) {
-      flash('读不到这个视频文件（可能被移走或没给权限）');
+      flash('读不到这个素材文件（可能被移走或没给权限）');
       return;
     }
     onVideoFile(vf);
@@ -746,10 +774,10 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
         applySrt(text, ep.best.name);
         return;
       }
-      flash('视频打开了，但字幕读不出来');
+      flash('素材打开了，但字幕读不出来');
       return;
     }
-    flash('视频打开了，这一集没找到字幕——字幕轨能抽的话就点「抽字幕」');
+    flash('素材已打开，未找到配套字幕；音频请导入 SRT/VTT，视频可尝试抽字幕');
   }
 
   // ---------- 播放 ----------
@@ -1042,20 +1070,26 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
   // ---------- 生词 ----------
   function saveCue(c: Cue) {
+    const clip = clipForCue(c);
     if (saved.some((s) => s.sentence === c.text)) {
+      const previous = saved.find(item => item.sentence === c.text);
+      if (previous && !validSavedClip(previous.clip) && clip) { setSaved(items => items.map(item => item === previous ? { ...item, clip } : item)); cacheCollectionClip(clip, videoFile); flash('已补全这条收藏的原句回放'); return; }
       flash('这句已经收过了');
       return;
     }
     setSaved((prev) => [
-      { word: c.text.slice(0, 60), sentence: c.text, translation: c.translation ?? c.native ?? '', addedAt: Date.now() },
+      { word: c.text.slice(0, 60), sentence: c.text, translation: c.translation ?? c.native ?? '', addedAt: Date.now(), ...(clip ? { clip } : {}) },
       ...prev,
     ]);
     flash('已加入生词本');
+    cacheCollectionClip(clip, videoFile);
     trackEvent('cue_save');
   }
 
   function removeSaved(i: number) {
-    setSaved((prev) => prev.filter((_, idx) => idx !== i));
+    const previous = saved[i], remaining = saved.filter((_, idx) => idx !== i);
+    setSaved(remaining);
+    if (previous?.clip && !remaining.some(item => item.clip?.videoId === previous.clip?.videoId)) void savedMediaStore().remove(previous.clip.videoId).catch(() => {});
   }
 
   const level = useMemo(() => (cues.length ? estimateLevel(cues) : '—'), [cues]);
@@ -1121,9 +1155,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               </button>
             )}
 
-            {sampleOnly ? <a className="btn btn-ghost" href={user ? '/learn' : '/signup?returnTo=%2Flearn'}>{user ? '回学习台导入' : '注册后导入视频'}</a> : <><FileBtn
-              label={videoName ? '换视频' : '选视频'}
-              accept="video/*"
+            {sampleOnly ? <a className="btn btn-ghost" href={user ? '/learn' : '/signup?returnTo=%2Flearn'}>{user ? '回学习台导入' : '注册后导入素材'}</a> : <><FileBtn
+              label={videoName ? '换素材' : '导入视频 / 音频'}
+              accept={MEDIA_ACCEPT}
               onPick={onVideoFile}
               active={!!videoUrl}
             />
@@ -1134,7 +1168,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               active={cues.length > 0 && !sourceName?.includes('演示')}
             /></>}
             {videoName && <button onClick={() => void clearCurrentLearning()}
-              title="清除浏览器保存的本次视频、字幕和进度，保留生词本与原文件"
+              title="清除浏览器保存的本次素材、字幕和进度，保留生词本与原文件"
               className="btn btn-ghost">清除记录</button>}
             <button
               onClick={() => loadSample()}
@@ -1146,9 +1180,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             </button>
             <button
               onClick={() => handleExtract()}
-              disabled={(!videoFile && videoUrl !== sample.video) || !!extractState || loadingSample}
+              disabled={audioOnly || (!videoFile && videoUrl !== sample.video) || !!extractState || loadingSample}
               title={
-                videoUrl === sample.video ? '重新载入配套字幕' : videoFile
+                audioOnly ? '音频请导入配套 SRT/VTT 字幕；抽字幕不提供语音识别' : videoUrl === sample.video ? '重新载入配套字幕' : videoFile
                   ? '从视频里直接抽字幕轨，不需要单独的字幕文件'
                   : '先选一个视频'
               }
@@ -1243,7 +1277,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
       {(sessionLoading || sessionNotice || missingSession) && (
         <div role="status" className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-2 text-[12px] text-[var(--text-dim)]">
           <span>{sessionLoading ? '正在恢复上次的学习…' : sessionNotice}</span>
-          {missingSession && <FileBtn label="选择原视频继续" accept="video/*" onPick={onVideoFile} />}
+          {missingSession && <FileBtn label="选择原素材继续" accept={MEDIA_ACCEPT} onPick={onVideoFile} />}
         </div>
       )}
       {(loadingSample || sampleError) && (
@@ -1304,16 +1338,17 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
       <div className="learn-columns mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col lg:flex-row">
         {/* 左：播放器 */}
         <div className="learn-player flex min-w-0 flex-1 flex-col border-b border-[rgb(var(--fg-rgb)/0.06)] lg:border-b-0 lg:border-r">
-          <div className={`learn-stage relative flex min-w-0 items-center justify-center bg-[var(--stage)] p-3 ${videoUrl ? 'learn-stage-video' : ''}`}>
+          <div className={`learn-stage relative flex min-w-0 items-center justify-center bg-[var(--stage)] p-3 ${videoUrl ? 'learn-stage-video' : ''} ${audioOnly ? 'learn-stage-audio' : ''}`}>
             {videoUrl ? (
-              <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-black shadow-card">
-                <video
+              <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-black shadow-card ${audioOnly ? 'learn-audio-player' : ''}`}>
+                {audioOnly && <div className="learn-audio-cover"><span aria-hidden="true">♫</span><p>播客 · 新闻 · 音频精听</p><h2>{videoName}</h2><p>导入配套字幕，即可逐句循环、查词和录音跟读。</p></div>}
+                <Player
                   key={videoUrl}
-                  ref={videoRef}
+                  ref={attachPlayer}
                   src={videoUrl}
                   playsInline
                   preload="auto"
-                  className="mx-auto block h-full max-h-full w-full object-contain"
+                  className={audioOnly ? 'learn-audio-controls' : 'mx-auto block h-full max-h-full w-full object-contain'}
                   onTimeUpdate={onTimeUpdate}
                   onSeeking={onSeeking}
                   onSeeked={onTimeUpdate}
@@ -1331,7 +1366,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                     onTimeUpdate();
                   }}
                   onEnded={onTimeUpdate}
-                  onPlay={() => { setPlaying(true); trackEvent('learning_start'); }}
+                  onPlay={() => { document.querySelectorAll<HTMLMediaElement>('video,audio').forEach(other => { if (other !== videoRef.current) other.pause(); }); window.speechSynthesis?.cancel(); setPlaying(true); trackEvent('learning_start'); }}
                   onPause={() => { setPlaying(false); onTimeUpdate(); flushSessionRef.current(); }}
                   onCanPlay={() => { setVideoStatus('ready'); setVideoError(undefined); }}
                   onWaiting={() => setVideoStatus('loading')}
@@ -1339,8 +1374,8 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                     trackEvent('video_error');
                     const code = event.currentTarget.error?.code;
                     setVideoError(code === 3 || code === 4
-                      ? '这个浏览器无法播放此视频，请换用 Safari、Chrome 或 Edge，或选择其他视频。'
-                      : '视频加载失败，请检查网络后重试。');
+                      ? '浏览器无法播放这份素材，请换用 MP4 视频或 MP3/M4A/WAV 音频。'
+                      : '素材加载失败，请检查文件或网络后重试。');
                     setVideoStatus('error');
                   }}
                   controls
@@ -1378,7 +1413,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                 )}
 
                 {/* 画面上的实时字幕，看片时视线不用来回跳 */}
-                {current >= 0 && cues[current] && (
+                {!audioOnly && current >= 0 && cues[current] && (
                   <div
                     key={current}
                     className="pointer-events-none absolute inset-x-0 bottom-12 flex flex-col items-center gap-0.5 px-8 text-center"
@@ -1410,12 +1445,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
           {videoUrl && videoStatus !== 'ready' && (
             <div role={videoStatus === 'error' ? 'alert' : 'status'} className="flex items-center justify-between gap-2 px-4 py-2 text-[12px] text-[var(--text-dim)]">
-              <span>{videoError ?? '视频正在缓冲，加载后点击播放。'}</span>
+              <span>{videoError ?? '素材正在缓冲，加载后点击播放。'}</span>
               {videoStatus === 'error' && <button className="btn btn-ghost shrink-0 !text-[12px]" onClick={() => {
                 setVideoError(undefined);
                 setVideoStatus('loading');
                 videoRef.current?.load();
-              }}>重试视频</button>}
+              }}>重试播放</button>}
             </div>
           )}
 
@@ -1602,13 +1637,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                                 tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openLookup(t.word!, c.text);
+                                  openLookup(t.word!, c.text, c);
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    openLookup(t.word!, c.text);
+                                    openLookup(t.word!, c.text, c);
                                   }
                                 }}
                                 className={`cursor-pointer rounded-[3px] px-[1px] transition-colors hover:bg-gold-500/25 hover:text-gold-200 ${
@@ -2337,11 +2372,11 @@ function EmptyVideo({
 
       <div>
         <h3 className="title-serif text-[20px] text-[var(--text)]">
-          {workTitle ? `打开《${workTitle}》的副本` : '选一段你自己的视频'}
+          {workTitle ? `打开《${workTitle}》的副本` : '选一段自己的视频或音频'}
         </h3>
         <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-relaxed text-[var(--text-dim)]">
           文件在你的浏览器里播放，不会上传到任何服务器。
-          {hasCues && ' 字幕已经准备好了，选个视频就能对上。'}
+          {hasCues ? ' 字幕已就绪，请选配套的视频或音频。' : ' 电影、美剧、播客、新闻都可以；逐句学习需配套字幕。'}
         </p>
       </div>
 
@@ -2349,11 +2384,11 @@ function EmptyVideo({
         <label className="btn btn-gold cursor-pointer">
           <input
             type="file"
-            accept="video/*"
+            accept={MEDIA_ACCEPT}
             className="hidden"
             onChange={(e) => onVideo(e.target.files?.[0])}
           />
-          选择视频文件
+          选择视频 / 音频
         </label>
         {canFolder && (
           <button
