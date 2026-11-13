@@ -6,6 +6,7 @@ import { speak } from '@/lib/dict';
 import type { SavedWord } from '@/lib/types';
 import LearningActivity from './LearningActivity';
 import VocabularyFlipCard from '@/components/VocabularyFlipCard';
+import VocabularyMotionToggle from '@/components/VocabularyMotion';
 import { parseReviewSchedule, type ReviewSchedule as Schedule } from '@/lib/review-schedule';
 const identity = (word: SavedWord) => `${word.word.toLowerCase()}:${word.addedAt}`;
 export default function ReviewCards() {
@@ -26,7 +27,7 @@ export default function ReviewCards() {
   }
   return <div className="account-review"><LearningActivity enabled={ready && !!current} review /><span className="account-eyebrow">收藏复习 · 免费</span><h1>再练一遍，记得更牢。</h1><p>先想想原句的意思，再翻看答案。收藏和复习进度保存在这台设备。</p>{notice && <div role="status" className="account-inline-note">{notice}</div>}
     {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <section className="account-card account-flashcard">
-      <div className="account-card-counter">{index + 1} / {cards.length}</div>
+      <div className="account-card-counter">{index + 1} / {cards.length}<VocabularyMotionToggle /></div>
       <VocabularyFlipCard key={identity(current)} flipped={answer} onFlip={setAnswer} label={current.word || current.sentence} answerLabel={current.translation || '这条收藏还没有译文'}
         front={<><span className="vocab-flip-label">先回忆，再翻面</span><h2>{current.word}</h2><p className="account-review-sentence" lang="en">{current.sentence}</p></>}
         back={<><span className="vocab-flip-label">释义与译文</span><p className="account-review-answer">{current.translation || '这条收藏还没有译文，可以回到学习台补充。'}</p></>} />

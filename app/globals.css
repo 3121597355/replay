@@ -645,7 +645,13 @@ body:has([data-page='learn']) footer {
 
 .vocab-flip-card{perspective:1100px;cursor:pointer;outline:none;border-radius:12px;min-width:0}
 .vocab-flip-card:focus-visible{outline:2px solid var(--link);outline-offset:3px}
-.vocab-flip-inner{display:grid;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+.vocab-flip-inner{display:grid;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.4,0,.2,1)}
+/* A deliberate card flip has its own user-controlled motion preference. */
+.vocab-flip-card[data-motion='on'] .vocab-flip-inner{transition:transform .65s cubic-bezier(.4,0,.2,1)!important}
+.vocab-flip-card[data-motion='off'] .vocab-flip-inner{transition:none!important}
+.vocab-motion-toggle{display:inline-flex;align-items:center;min-height:32px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:var(--text-dim);background:var(--surface)}
+.vocab-motion-toggle:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.account-card-counter:has(.vocab-motion-toggle){display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px}
 .vocab-flip-card[data-flipped='true'] .vocab-flip-inner{transform:rotateY(180deg)}
 .vocab-flip-face{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0;min-height:170px;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--learn-panel);backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow-wrap:anywhere}
 .vocab-flip-back{transform:rotateY(180deg);background:var(--surface);border-color:var(--accent)}

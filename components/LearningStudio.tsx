@@ -53,6 +53,7 @@ import { clearLearningSession, fileLearningSource, loadLearningSession, matchesL
 import type { AccountUser } from '@/lib/account-types';
 import LearningActivity from './account/LearningActivity';
 import SavedVocabularyCard from './SavedVocabularyCard';
+import VocabularyMotionToggle from './VocabularyMotion';
 import SpeakingPractice from './SpeakingPractice';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
@@ -1708,6 +1709,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    <VocabularyMotionToggle />
                     {saved.map((w, i) => <SavedVocabularyCard key={`${w.word}:${w.addedAt}`} word={w} onRemove={() => removeSaved(i)} />)}
                   </div>
                 )}
