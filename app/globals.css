@@ -266,6 +266,76 @@ select:disabled {
   text-wrap: balance;
 }
 
+/* A soft film backdrop, with a clear reading area in either theme. */
+.home-film-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.home-film-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+}
+.home-film-media {
+  position: absolute;
+  inset: -20px;
+  background: url('/home/film-poster.jpg') center 25% / cover;
+  filter: blur(4px) saturate(.8);
+}
+.home-film-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  opacity: 0;
+}
+.home-film-video[data-playing='true'] {
+  opacity: 1;
+}
+.home-film-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgb(var(--bg-rgb) / .5), transparent 24%, transparent 64%, var(--page)),
+    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .9) 12%, rgb(var(--bg-rgb) / .7) 48%, rgb(var(--bg-rgb) / .4) 100%);
+}
+[data-theme='dark'] .home-film-media {
+  filter: blur(4px) saturate(.8) brightness(1.15);
+}
+[data-theme='dark'] .home-film-shade {
+  background:
+    linear-gradient(to bottom, rgb(var(--bg-rgb) / .55), transparent 24%, transparent 64%, var(--page)),
+    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .82) 12%, rgb(var(--bg-rgb) / .54) 48%, rgb(var(--bg-rgb) / .22) 100%);
+}
+.home-film-caption {
+  position: absolute;
+  left: max(1.5rem, calc((100% - 1072px) / 2));
+  bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  color: var(--text-soft);
+  font-size: 10px;
+  letter-spacing: .06em;
+  opacity: .72;
+}
+.home-film-caption-line {
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+}
+@media (max-width: 640px) {
+  .home-film-media {
+    filter: blur(3px) saturate(.8);
+  }
+  [data-theme='dark'] .home-film-media {
+    filter: blur(3px) saturate(.8) brightness(1.15);
+  }
+}
+
 /* Home entrance matches the soft, staggered reveal in the Jianying project.
    Pending is added only after JS is ready, so SSR/no-JS content stays visible. */
 .home-intro {

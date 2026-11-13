@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Catalog from '@/components/Catalog';
 import Poster from '@/components/Poster';
 import HomeMotion from '@/components/HomeMotion';
+import HomeFilmBackdrop from '@/components/HomeFilmBackdrop';
 import { getWork, works } from '@/lib/data';
 import { difficultyLabel } from '@/lib/types';
 import { siteName, siteUrl } from '@/lib/site';
@@ -16,9 +17,10 @@ export default function HomePage() {
   return (
     <HomeMotion>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: siteName, alternateName: 'Replay', url: siteUrl }).replace(/</g, '\\u003c') }} />
-      <section className="mx-auto max-w-[1120px] px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
-        <div className="home-hero mx-auto max-w-[760px] text-center">
-          <p className="home-intro mb-5 text-[13px] font-medium text-[var(--accent)]">剧说英语 · 核心功能免费</p>
+      <section className="home-film-hero px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
+        <HomeFilmBackdrop />
+        <div className="home-hero relative mx-auto max-w-[760px] text-center">
+          <p className="home-intro mb-5 text-[13px] font-medium text-[var(--success-ink)]">剧说英语 · 核心功能免费</p>
           <h1 className="home-intro text-balance text-[44px] font-bold leading-[1.08] tracking-[-0.045em] text-[var(--text)] sm:text-[60px]">
             看剧练听力，<br />跟读练口语。
           </h1>

@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "friends",
+    "title": "老友记",
+    "originalTitle": "Friends",
+    "page": "https://www.movienco.co.uk/trailers/friends-clip-joey-chandler-buy-a-table/",
+    "media": "https://v1.ecartelera.com/video/26600/26685.mp4",
+    "start": 21
+  },
+  {
+    "slug": "interstellar",
+    "title": "星际穿越",
+    "originalTitle": "Interstellar",
+    "page": "https://www.ecartelera.com/videos/trailer-interstellar-3/",
+    "media": "https://v1.ecartelera.com/video/5100/5107.mp4",
+    "start": 132
+  },
+  {
+    "slug": "breaking-bad",
+    "title": "绝命毒师",
+    "originalTitle": "Breaking Bad",
+    "page": "https://www.movienco.co.uk/trailers/breaking-bad-season-2-trailer/",
+    "media": "https://v1.ecartelera.com/video/9600/9622.mp4",
+    "start": 1
+  },
+  {
+    "slug": "forrest-gump",
+    "title": "阿甘正传",
+    "originalTitle": "Forrest Gump",
+    "page": "https://www.movienco.co.uk/trailers/forrest-gump-trailer/",
+    "media": "https://v1.ecartelera.com/video/10300/10394.mp4",
+    "start": 3.5
+  },
+  {
+    "slug": "game-of-thrones",
+    "title": "权力的游戏",
+    "originalTitle": "Game of Thrones",
+    "page": "https://www.movienco.co.uk/trailers/game-of-thrones-season-8-trailer/",
+    "media": "https://v1.ecartelera.com/video/23900/23928.mp4",
+    "start": 43.2
+  }
+]
