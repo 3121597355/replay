@@ -61,6 +61,6 @@ jobs:
           npx tsx scripts/test-pairing.ts
           npx tsx scripts/test-srt-export.ts
           npx tsx scripts/test-download-import.ts
-          npx tsx --test scripts/learning-session.test.ts scripts/saved-line.test.ts
+          npx tsx --test scripts/learning-session.test.ts scripts/saved-line.test.ts scripts/saved-sentence.test.ts
           npx tsx --require ./scripts/server-only-test.cjs --test scripts/admin-api.test.ts scripts/accounts-api.test.ts
           npx tsx --test scripts/accounts-core.test.ts scripts/learning-calendar.test.ts

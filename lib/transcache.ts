@@ -52,9 +52,10 @@ function safeParse(raw: string | null): TransCacheEntry | null {
   }
 }
 
-export function readCache(hash: string): TransCacheEntry | null {
+export function readCache(hash: string, owner?: string): TransCacheEntry | null {
   try {
-    return safeParse(localStorage.getItem(prefix() + hash));
+    const key = owner === undefined ? prefix() : owner === 'local' ? 'replay.trans.' : `replay.trans.${owner}.`;
+    return safeParse(localStorage.getItem(key + hash));
   } catch {
     return null;
   }

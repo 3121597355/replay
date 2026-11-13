@@ -661,6 +661,10 @@ body:has([data-page='learn']) footer {
 .vocab-flip-back .vocab-answer-translation{width:100%;margin:0;padding:16px 0 0;border-top:1px solid var(--line)}
 .account-flashcard .vocab-original-sentence{margin:4px 0 0!important}
 .account-flashcard .vocab-answer-translation{font-size:18px}
+.account-flashcard .vocab-flip-back .vocab-original-sentence{font-size:19px;line-height:1.8}
+.vocab-word-meaning{width:100%;padding-top:12px;text-align:left}
+.vocab-word-meaning>span{display:block;margin-bottom:5px;font-size:11px;color:var(--text-faint)}
+.vocab-word-meaning p{font-size:14px;color:var(--text-dim)}
 .vocab-flip-label{font-size:11px;color:var(--success-ink)}.vocab-flip-hint{margin-top:auto;padding-top:8px;color:var(--text-faint);font-size:11px}
 .saved-vocab-tools{display:flex;justify-content:space-between;gap:12px;padding:0 2px 8px}.saved-vocab-tools button{min-height:32px;padding:4px 6px;font-size:11px;color:var(--text-dim);border-radius:5px}.saved-vocab-tools button:hover{background:var(--surface-2);color:var(--text)}
 .saved-vocab-card+.saved-vocab-card{margin-top:16px}

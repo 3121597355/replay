@@ -130,7 +130,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
   // 点词查义
   const [lookupState, setLookupState] = useState<LookupState | null>(null);
-  const lookupClipRef = useRef<{ sentence: string; clip?: SavedLineClip; file?: File }>();
+  const lookupClipRef = useRef<{ sentence: string; sentenceTranslation?: string; clip?: SavedLineClip; file?: File }>();
 
   /**
    * 当前字幕的内容指纹，翻译缓存按它索引。
@@ -174,7 +174,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     if (clip && file) void savedMediaStore().save(clip, file).then(saved => { if (!saved) flash('收藏和原句时间点已保存；回放原片未能缓存，下次可重新选择原片。'); });
   }
   async function openLookup(word: string, sentence: string, cue?: Cue) {
-    lookupClipRef.current = { sentence, clip: clipForCue(cue), file: videoFile };
+    lookupClipRef.current = { sentence, sentenceTranslation: cue?.translation || cue?.native, clip: clipForCue(cue), file: videoFile };
     trackEvent('word_lookup');
     setLookupState({ word, sentence, result: null, loading: true });
     try {
@@ -192,16 +192,20 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     const exists = saved.some((s) => s.word.toLowerCase() === word.toLowerCase());
     if (exists) {
       const previous = saved.find(item => item.word.toLowerCase() === word.toLowerCase());
-      if (previous?.sentence === sentence && !validSavedClip(previous.clip) && origin?.clip) {
-        setSaved(items => items.map(item => item === previous ? { ...item, clip: origin.clip } : item));
-        cacheCollectionClip(origin.clip, origin.file); flash('已补全这条收藏的原句回放'); return;
+      if (previous?.sentence === sentence && origin) {
+        const missingClip = !validSavedClip(previous.clip) && origin.clip;
+        const sentenceTranslation = !previous.sentenceTranslation && origin.sentenceTranslation && (!validSavedClip(previous.clip) || previous.clip.videoId === origin.clip?.videoId) ? origin.sentenceTranslation : undefined;
+        if (missingClip || sentenceTranslation) {
+          setSaved(items => items.map(item => item === previous ? { ...item, ...(missingClip ? { clip: origin.clip } : {}), ...(sentenceTranslation ? { sentenceTranslation } : {}) } : item));
+          cacheCollectionClip(origin.clip, origin.file); flash('已补全收藏的原句信息'); return;
+        }
       }
       flash('这个词已经在生词本里了');
       return;
     }
     setSaved((prev) => [
       ...prev,
-      { word, sentence, translation: def, addedAt: Date.now(), ...(origin?.clip ? { clip: origin.clip } : {}) },
+      { word, sentence, translation: def, sentenceTranslation: origin?.sentenceTranslation, addedAt: Date.now(), ...(origin?.clip ? { clip: origin.clip } : {}) },
     ]);
     flash(`已收藏 ${word}`);
     cacheCollectionClip(origin?.clip, origin?.file);
@@ -1071,14 +1075,19 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   // ---------- 生词 ----------
   function saveCue(c: Cue) {
     const clip = clipForCue(c);
+    const sentenceTranslation = c.translation || c.native || '';
     if (saved.some((s) => s.sentence === c.text)) {
       const previous = saved.find(item => item.sentence === c.text);
-      if (previous && !validSavedClip(previous.clip) && clip) { setSaved(items => items.map(item => item === previous ? { ...item, clip } : item)); cacheCollectionClip(clip, videoFile); flash('已补全这条收藏的原句回放'); return; }
+      if (previous) {
+        const missingClip = !validSavedClip(previous.clip) && clip;
+        const missingTranslation = !previous.sentenceTranslation && sentenceTranslation && (!validSavedClip(previous.clip) || previous.clip.videoId === clip?.videoId);
+        if (missingClip || missingTranslation) { setSaved(items => items.map(item => item === previous ? { ...item, ...(missingClip ? { clip } : {}), ...(missingTranslation ? { sentenceTranslation } : {}) } : item)); cacheCollectionClip(clip, videoFile); flash('已补全收藏的原句信息'); return; }
+      }
       flash('这句已经收过了');
       return;
     }
     setSaved((prev) => [
-      { word: c.text.slice(0, 60), sentence: c.text, translation: c.translation ?? c.native ?? '', addedAt: Date.now(), ...(clip ? { clip } : {}) },
+      { word: c.text.slice(0, 60), sentence: c.text, translation: sentenceTranslation, sentenceTranslation, addedAt: Date.now(), ...(clip ? { clip } : {}) },
       ...prev,
     ]);
     flash('已加入生词本');

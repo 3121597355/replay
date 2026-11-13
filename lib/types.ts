@@ -47,6 +47,8 @@ export interface SavedWord {
   word: string;
   sentence: string;
   translation: string;
+  /** 整句译文，独立于查词得到的单词释义。 */
+  sentenceTranslation?: string;
   addedAt: number;
   clip?: SavedLineClip;
 }

@@ -13,7 +13,7 @@ export function loadSavedWords(owner = getStorageOwner()): SavedWord[] {
       item !== null && typeof item === 'object' &&
       typeof item.word === 'string' && typeof item.sentence === 'string' &&
       typeof item.translation === 'string' && typeof item.addedAt === 'number'
-    ).map(item => { if (!item.clip || validSavedClip(item.clip)) return item; const { clip: ignored, ...legacy } = item; return legacy; });
+    ).map(item => { const clean = { ...item }; if (clean.clip && !validSavedClip(clean.clip)) delete clean.clip; if (typeof clean.sentenceTranslation !== 'string') delete clean.sentenceTranslation; return clean; });
   } catch {
     return [];
   }
