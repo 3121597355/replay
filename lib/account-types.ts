@@ -1,6 +1,7 @@
 export type AccountUser = { id: string; username: string; createdAt: string };
 export type AccountDay = { day: string; seconds: number; actions: number };
-export type AccountSummary = { user: AccountUser; goalSeconds: number; today: AccountDay; totalSeconds: number; learningDays: number; streak: number; days: AccountDay[] };
+export type AccountHistory = { year: number; years: number[]; today: string; start: string; end: string; timeZone: 'Asia/Shanghai'; days: AccountDay[] };
+export type AccountSummary = { user: AccountUser; goalSeconds: number; today: AccountDay; totalSeconds: number; learningDays: number; streak: number; days: AccountDay[]; history?: AccountHistory };
 export type AccountState = { user: AccountUser | null; mode: 'accounts' | 'local' | 'unavailable' };
 export function safeReturnPath(value: unknown): string {
   if (typeof value !== 'string' || value.length > 1200 || !value.startsWith('/') || value.startsWith('//') || /[\\\r\n]/.test(value)) return '/learn';

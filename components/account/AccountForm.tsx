@@ -3,6 +3,8 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { safeReturnPath } from '@/lib/account-types';
 import { signupSource } from './AccountProvider';
+import HomeMotion from '@/components/HomeMotion';
+import HomeFilmBackdrop from '@/components/HomeFilmBackdrop';
 export default function AccountForm({ mode, returnTo = '/learn' }: { mode: 'signup' | 'login' | 'recover'; returnTo?: string }) {
   const destination = safeReturnPath(returnTo);
   const [username, setUsername] = useState(''), [password, setPassword] = useState(''), [confirm, setConfirm] = useState('');
@@ -29,7 +31,7 @@ export default function AccountForm({ mode, returnTo = '/learn' }: { mode: 'sign
     const url = URL.createObjectURL(new Blob([`剧说英语账号恢复码\n用户名：${username}\n恢复码：${recoveryCode}\n请妥善保存，不要发送给他人。使用后会更换新恢复码。\n`], { type: 'text/plain;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = '剧说英语-账号恢复码.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <div className="account-auth-layout"><section className="account-auth-intro"><span className="account-eyebrow">剧说英语 · 免费学习</span><h1>{recover ? '找回账号，接着学。' : signup ? '喜欢的剧，\n也能成为你的英语练习。' : '欢迎回来，\n接着上次那一句。'}</h1><p>视频留在本地，逐句精听、查词和收藏。每天练几分钟，把学过的表达慢慢用起来。</p><ul><li>核心功能免费，无需购买会员</li><li>用户名注册，不收手机号和邮箱</li><li>账号记录学习天数与进度，内容保存在本机</li></ul><Link href="/learn?trial=1" className="account-text-link">先试学一段，感受怎么学 →</Link></section>
+  return <HomeMotion page="auth" controls={false}><div className="account-auth-scene"><HomeFilmBackdrop /><div className="account-auth-layout"><section className="account-auth-intro"><span className="account-eyebrow">剧说英语 · 免费学习</span><h1>{recover ? '找回账号，接着学。' : signup ? '喜欢的剧，\n也能成为你的英语练习。' : '欢迎回来，\n接着上次那一句。'}</h1><p>视频留在本地，逐句精听、查词和收藏。每天练几分钟，把学过的表达慢慢用起来。</p><ul><li>核心功能免费，无需购买会员</li><li>用户名注册，不收手机号和邮箱</li><li>账号记录学习天数与进度，内容保存在本机</li></ul><Link href="/learn?trial=1" className="account-text-link">先试学一段，感受怎么学 →</Link></section>
     <section className="account-card account-auth-card">
       {recoveryCode ? <><span className="account-eyebrow">{recover ? '密码已重设' : '注册成功'}</span><h2>保存你的账号恢复码</h2><p>忘记密码时，用用户名和恢复码找回账号。这串码只显示一次，之后也可登录后重新生成。</p><code className="account-recovery-code">{recoveryCode}</code><div className="account-button-row"><button className="btn btn-secondary" type="button" onClick={copyCode}>{copied ? '已复制' : '复制恢复码'}</button><button className="btn btn-secondary" type="button" onClick={saveCode}>下载保存</button></div><a className="btn btn-primary account-full-button" href={recover ? `/login?returnTo=${encodeURIComponent(destination)}` : destination}>{recover ? '用新密码登录' : '进入学习台'}</a><small>请妥善保存，恢复码可用于更换账号密码。</small></> : <>
         <h2>{recover ? '重设密码' : signup ? '免费创建账号' : '登录剧说英语'}</h2><p>{recover ? '填写注册时保存的恢复码。重设后，旧登录和旧恢复码都会失效。' : signup ? '记住用户名和密码，下次直接继续学。' : '学习记录还在，今天继续练几句。'}</p>
@@ -46,5 +48,5 @@ export default function AccountForm({ mode, returnTo = '/learn' }: { mode: 'sign
         </form>
         <div className="account-auth-links"><Link href={`${signup || recover ? '/login' : '/signup'}?returnTo=${encodeURIComponent(destination)}`}>{signup ? '已有账号？登录' : recover ? '返回登录' : '还没有账号？免费注册'}</Link>{!signup && !recover && <Link href={`/account/recover?returnTo=${encodeURIComponent(destination)}`}>忘记密码</Link>}</div>
       </>}
-    </section></div>;
+    </section></div></div></HomeMotion>;
 }

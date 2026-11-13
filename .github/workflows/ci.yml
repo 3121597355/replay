@@ -63,4 +63,4 @@ jobs:
           npx tsx scripts/test-download-import.ts
           npx tsx --test scripts/learning-session.test.ts
           npx tsx --require ./scripts/server-only-test.cjs --test scripts/admin-api.test.ts scripts/accounts-api.test.ts
-          npx tsx --test scripts/accounts-core.test.ts
+          npx tsx --test scripts/accounts-core.test.ts scripts/learning-calendar.test.ts

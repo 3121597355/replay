@@ -43,7 +43,12 @@ async function handle(request: NextRequest, { params }: { params: Promise<{ acti
       try { const data = await accountService('/session', 'GET', undefined, token); return reply({ user: data.user, mode }); }
       catch (error) { if (error instanceof AccountError && error.status === 401) { const response = reply({ user: null, mode }); response.cookies.delete(USER_COOKIE); return response; } throw error; }
     }
-    if (action === 'summary') return reply(await accountService('/summary', 'GET', undefined, token));
+    if (action === 'summary') {
+      const year = request.nextUrl.searchParams.get('year');
+      const currentYear = Number(new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: 'Asia/Shanghai' }).format(new Date()));
+      if (year !== null && (!/^\d{4}$/.test(year) || Number(year) < 2000 || Number(year) > currentYear)) return reply({ error: '年份无效' }, 400);
+      return reply(await accountService(`/summary${year === null ? '' : `?year=${year}`}`, 'GET', undefined, token));
+    }
     const body = await readBody(request);
     if (action === 'logout') {
       try { await accountService('/logout', 'POST', {}, token); } catch (error) { if (!(error instanceof AccountError && error.status === 401)) throw error; }

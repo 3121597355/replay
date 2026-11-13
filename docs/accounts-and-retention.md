@@ -8,6 +8,10 @@
 
 我的学习以每天 5 分钟为目标。当天累计至少 180 秒前台播放或主动复习计为有效学习日；切后台、暂停视频、空复习页不累计。复习计划为 1 / 3 / 7 / 14 / 30 天，不熟的收藏 10 分钟后再出现。客户端计时用于学习参考，可存在网络和多设备误差。
 
+年度学习日历按北京时间自然年展示 1–12 月，右侧可切换最近五年及有历史记录的更早年份。颜色使用固定时长档位：未学习、不到 5 分钟、5–15 分钟、15–30 分钟、30 分钟及以上；有效学习天数仍按满 3 分钟计算。空年份显示灰色，未来日期不可选；手机在日历内部横向滑动，日期支持点击和方向键查看。登录用户的 `/api/account/summary?year=2026` 返回该年的 `history`（year / years / today / start / end / timeZone / days），原最近七天和累计指标不受年份筛选影响，仅能读取本人记录。数据每 20 秒及回到前台时刷新，切年份不会重置，失败时提示记录未更新。
+
+注册、登录与找回页复用首页无声影视混剪和海报，模糊背景与表单遮罩适配浅深主题；系统减少动效、首页动效偏好或省流量模式保留静态画面，不加载影片，离开前台暂停。
+
 后台“注册与留存”显示真实账号总数、区间新增、近 7 / 30 天学习用户、注册来源柱状图和注册队列。D1 / D7 观察注册后第 1 / 7 个北京时间自然日是否有效学习，完整观察日结束后才进入分母。仅登录不算有效学习；测试账号排除所有正式报表。只有管理员能看到用户名列表，分析平台只拿聚合数据。
 
 只读统计接口新增 `/api/stats/v1/users`、`users-summary`、`users-timeseries`、`users-cohorts`、`users-sources`。沿用后台生成的只读 Bearer 密钥，支持 `start` / `end`（最长 90 天）和分项 `format=csv`；受现有 API / 导出开关控制，完整对象不支持 CSV。普通用户 Cookie 与管理员 Cookie 不能替代只读密钥。`/api/stats/v1/schema` 公开接口定义。
@@ -18,7 +22,7 @@
 
 ```powershell
 node --test scripts/accounts-worker.test.mjs
-npx tsx --test scripts/accounts-core.test.ts scripts/learning-session.test.ts
+npx tsx --test scripts/accounts-core.test.ts scripts/learning-session.test.ts scripts/learning-calendar.test.ts
 npx tsx --require ./scripts/server-only-test.cjs --test scripts/admin-api.test.ts
 npm run typecheck
 npm run build

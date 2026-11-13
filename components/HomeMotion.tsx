@@ -10,7 +10,7 @@ export function useHomeMotionEnabled() {
   return useContext(HomeMotionEnabled);
 }
 
-export default function HomeMotion({ children }: { children: ReactNode }) {
+export default function HomeMotion({ children, controls = true, page = 'home' }: { children: ReactNode; controls?: boolean; page?: 'home' | 'auth' }) {
   const root = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<'system' | 'soft' | 'reduce'>('system');
   const [systemReduced, setSystemReduced] = useState(false);
@@ -37,9 +37,9 @@ export default function HomeMotion({ children }: { children: ReactNode }) {
   };
   return (
     <HomeMotionEnabled.Provider value={mounted && enabled}>
-      <div ref={root} data-page="home" data-home-motion={mode}>
+      <div ref={root} data-page={page} data-home-motion={mode}>
         {children}
-        {mounted && (
+        {mounted && controls && (
           <div className="mx-auto flex max-w-[1120px] justify-end px-4 pb-4 sm:px-6">
             <button
               type="button"

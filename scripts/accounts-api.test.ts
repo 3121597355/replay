@@ -35,6 +35,21 @@ test('signup sets a secure HttpOnly cookie and never exposes password hashes or 
     const cookie = response.headers.get('set-cookie')!; assert.match(cookie, /HttpOnly/i); assert.match(cookie, /Secure/i); assert.match(cookie, /SameSite=lax/i);
   } finally { global.fetch = originalFetch; if (originalUrl === undefined) delete process.env.REPLAY_ACCOUNTS_URL; else process.env.REPLAY_ACCOUNTS_URL = originalUrl; if (originalSecret === undefined) delete process.env.REPLAY_ACCOUNTS_SECRET; else process.env.REPLAY_ACCOUNTS_SECRET = originalSecret; }
 });
+test('annual summary requires login, validates the year and only forwards the allowed query', async () => {
+  const originalFetch = global.fetch, originalUrl = process.env.REPLAY_ACCOUNTS_URL, originalSecret = process.env.REPLAY_ACCOUNTS_SECRET;
+  process.env.REPLAY_ACCOUNTS_URL = 'https://private.test'; process.env.REPLAY_ACCOUNTS_SECRET = 'test-secret';
+  const params = { params: Promise.resolve({ action: 'summary' }) };
+  const request = (query: string, loggedIn = true) => new NextRequest(`${origin}/api/account/summary${query}`, { headers: loggedIn ? { Cookie: `replay_user=${'a'.repeat(64)}` } : {} });
+  try {
+    let calls = 0;
+    global.fetch = async (input, init) => { calls++; assert.equal(String(input), 'https://private.test/summary?year=2025'); assert.equal(new Headers(init?.headers).get('x-user-session'), 'a'.repeat(64)); return Response.json({ history: { year: 2025, days: [] } }); };
+    assert.equal((await GET(request('?year=2025', false), params)).status, 401);
+    for (const value of ['1999', '9999', '2025.0', '', 'abcd']) assert.equal((await GET(request(`?year=${value}`), params)).status, 400);
+    assert.equal(calls, 0);
+    const result = await GET(request('?year=2025&user_id=other&secret=ignored'), params);
+    assert.equal(result.status, 200); assert.equal((await result.json()).history.year, 2025); assert.equal(calls, 1);
+  } finally { global.fetch = originalFetch; if (originalUrl === undefined) delete process.env.REPLAY_ACCOUNTS_URL; else process.env.REPLAY_ACCOUNTS_URL = originalUrl; if (originalSecret === undefined) delete process.env.REPLAY_ACCOUNTS_SECRET; else process.env.REPLAY_ACCOUNTS_SECRET = originalSecret; }
+});
 test('user stats require the existing read-only key and omit user identity lists', async () => {
   const originalFetch = global.fetch, originalUrl = process.env.REPLAY_ACCOUNTS_URL, originalSecret = process.env.REPLAY_ACCOUNTS_SECRET;
   process.env.REPLAY_ACCOUNTS_URL = 'https://private.test'; process.env.REPLAY_ACCOUNTS_SECRET = 'test-secret';

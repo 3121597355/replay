@@ -39,17 +39,21 @@ async function issueSession(env, user, now) {
   await env.DB.prepare('DELETE FROM rate_windows WHERE expires_at<?').bind(now).run();
   return { user: publicUser(user), token, expiresAt };
 }
-async function userSummary(env, user, now) {
+async function userSummary(env, user, now, year) {
   const result = await env.DB.prepare('SELECT day,SUM(seconds) AS seconds,COUNT(CASE WHEN action<>\'\' THEN 1 END) AS actions FROM activity WHERE user_id=? GROUP BY day ORDER BY day DESC').bind(user.id).all();
-  const rows = result.results;
   const today = beijingDay(now);
+  const rows = result.results.filter(row => row.day <= today);
+  const currentYear = Number(today.slice(0, 4));
+  const start = `${year}-01-01`, end = `${year}-12-31`;
+  const years = [...new Set([...Array.from({ length: 5 }, (_, index) => currentYear - index), year, ...rows.map(row => Number(row.day.slice(0, 4)))])].filter(value => value >= 2000 && value <= currentYear).sort((a, b) => b - a);
   const byDay = new Map(rows.map(row => [row.day, row]));
   const validDays = rows.filter(row => row.seconds >= 180);
   let streak = 0;
   const offset = (byDay.get(today)?.seconds || 0) >= 180 ? 0 : 1;
   while ((byDay.get(beijingDay(now - (offset + streak) * DAY))?.seconds || 0) >= 180) streak++;
   return { user: publicUser(user), goalSeconds: 300, today: byDay.get(today) || { day: today, seconds: 0, actions: 0 }, totalSeconds: rows.reduce((sum, row) => sum + row.seconds, 0), learningDays: validDays.length, streak,
-    days: Array.from({ length: 7 }, (_, index) => { const day = beijingDay(now - (6 - index) * DAY); return byDay.get(day) || { day, seconds: 0, actions: 0 }; }) };
+    days: Array.from({ length: 7 }, (_, index) => { const day = beijingDay(now - (6 - index) * DAY); return byDay.get(day) || { day, seconds: 0, actions: 0 }; }),
+    history: { year, years, today, start, end, timeZone: 'Asia/Shanghai', days: rows.filter(row => row.day >= start && row.day <= end).reverse() } };
 }
 async function adminReport(env, start, end, now) {
   const daily = 'SELECT a.user_id,a.day,SUM(a.seconds) AS seconds FROM activity a JOIN users u ON u.id=a.user_id WHERE u.is_test=0 GROUP BY a.user_id,a.day';
@@ -138,7 +142,13 @@ export async function handle(request, env, now = Date.now()) {
   if (!user) return problem('登录已过期，请重新登录', 401);
   if (path === '/session') return json({ user: publicUser(user) });
   if (path === '/logout') { await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(user.token_hash).run(); return json({ ok: true }); }
-  if (path === '/summary') return json(await userSummary(env, user, now));
+  if (path === '/summary') {
+    const currentYear = Number(beijingDay(now).slice(0, 4));
+    const value = url.searchParams.get('year');
+    const year = value === null ? currentYear : Number(value);
+    if (value !== null && (!/^\d{4}$/.test(value) || year < 2000 || year > currentYear)) return problem('年份无效');
+    return json(await userSummary(env, user, now, year));
+  }
   if (path === '/close') {
     if (body.passwordHash !== user.password_hash) return problem('当前密码不正确', 401);
     const result = await env.DB.batch([

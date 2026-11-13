@@ -92,6 +92,32 @@ test('reports reject normalized invalid dates and too-wide ranges', async () => 
   const { call } = fixture();
   for (const query of ['start=2026-02-31&end=2026-03-01', 'start=2026-01-01&end=2026-11-13', 'end=2026-11-14']) assert.equal((await call(`/admin/report?${query}`)).status, 400);
 });
+test('personal calendar returns private natural years without changing weekly or lifetime totals', async () => {
+  const { call, signup, db } = fixture();
+  const first = await signup('日历用户'), other = await signup('另一位用户');
+  const insert = (user, offset, seconds) => db.prepare('INSERT INTO activity VALUES(?,?,?,?,?,?)').run(user.user.id, crypto.randomUUID(), beijingDay(NOW - offset * DAY), seconds, 'play', new Date(NOW - offset * DAY).toISOString());
+  insert(first, 365, 90); insert(first, 364, 300); insert(first, 0, 60); insert(first, 0, 120); insert(first, -1, 8000);
+  insert(other, 0, 7200);
+  const response = await call('/summary', undefined, first.token);
+  assert.equal(response.status, 200);
+  assert.equal(response.data.days.length, 7);
+  assert.equal(response.data.today.seconds, 180);
+  assert.equal(response.data.totalSeconds, 570);
+  assert.deepEqual(response.data.history, { year: 2026, years: [2026, 2025, 2024, 2023, 2022], today: beijingDay(NOW), start: '2026-01-01', end: '2026-12-31', timeZone: 'Asia/Shanghai', days: [
+    { day: beijingDay(NOW), seconds: 180, actions: 2 },
+  ] });
+  const previous = (await call('/summary?year=2025', undefined, first.token)).data;
+  assert.deepEqual(previous.history.days, [
+    { day: beijingDay(NOW - 365 * DAY), seconds: 90, actions: 1 },
+    { day: beijingDay(NOW - 364 * DAY), seconds: 300, actions: 1 },
+  ]);
+  assert.equal(previous.today.seconds, 180); assert.equal(previous.totalSeconds, 570);
+  assert.deepEqual((await call('/summary?year=2024', undefined, first.token)).data.history.days, []);
+  for (const value of ['2027', '1999', '2025.0', '', 'abcd']) assert.equal((await call(`/summary?year=${value}`, undefined, first.token)).status, 400);
+  assert.equal((await call('/summary')).status, 401);
+  assert.equal((await call('/summary', undefined, 'f'.repeat(64))).status, 401);
+  assert.equal((await call('/summary', undefined, other.token)).data.history.days[0].seconds, 7200);
+});
 test('account closure requires current credential and removes only that users data', async () => {
   const { call, signup, db } = fixture(); const first = await signup(), second = await signup('保留用户');
   await call('/activity', { eventId: crypto.randomUUID(), seconds: 20, action: 'play' }, first.token, NOW + 20000);

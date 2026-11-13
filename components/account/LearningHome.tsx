@@ -5,6 +5,7 @@ import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
 import { storageKey } from '@/lib/account-storage';
 import { learningStore, loadLearningSession } from '@/lib/learning-session';
 import type { SavedWord } from '@/lib/types';
+import LearningCalendar from './LearningCalendar';
 const minutes = (seconds: number) => seconds > 0 && seconds < 60 ? '不到 1 分钟' : `${Math.floor(seconds / 60)} 分钟`;
 function oldWords(): SavedWord[] {
   const result: SavedWord[] = [];
@@ -15,6 +16,8 @@ function oldWords(): SavedWord[] {
 }
 export default function LearningHome({ initial }: { initial: AccountSummary }) {
   const [summary, setSummary] = useState(initial), [saved, setSaved] = useState(0), [resume, setResume] = useState('');
+  const [year, setYear] = useState(initial.history?.year || Number(initial.today.day.slice(0, 4)));
+  const [calendarLoading, setCalendarLoading] = useState(false), [calendarError, setCalendarError] = useState('');
   const [legacy, setLegacy] = useState(false), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [password, setPassword] = useState(''), [recoveryCode, setRecoveryCode] = useState('');
   const [closePassword, setClosePassword] = useState(''), [closeConfirmed, setCloseConfirmed] = useState(false);
@@ -25,13 +28,34 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
       if (oldWords().length) setLegacy(true);
       void learningStore('local').loadLearningSession().then(value => { if (value) setLegacy(true); }).catch(() => {});
     } } catch {}
+  }, []);
+  useEffect(() => {
+    let active = true, pending = false;
+    let controller: AbortController | undefined;
     const refresh = async () => {
       if (document.visibilityState !== 'visible') return;
-      try { const response = await fetch('/api/account/summary', { cache: 'no-store', signal: AbortSignal.timeout(12000) }); if (response.status === 401) { window.location.assign('/login?returnTo=%2Faccount'); return; } if (response.ok) setSummary(await response.json()); } catch {}
+      if (pending) return;
+      pending = true;
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller?.abort(), 12000);
+      try {
+        const response = await fetch(`/api/account/summary?year=${year}`, { cache: 'no-store', signal: controller.signal });
+        if (!active) return;
+        if (response.status === 401) { window.location.assign('/login?returnTo=%2Faccount'); return; }
+        if (!response.ok) throw new Error('学习记录暂时连接不上，请稍后再试。');
+        const data: AccountSummary = await response.json();
+        if (!active) return;
+        if (data.history?.year !== year) throw new Error('年度记录暂时不可用，请稍后再试。');
+        setSummary(data); setCalendarError('');
+      } catch { if (active) setCalendarError('年度记录未能更新，请稍后再试。'); }
+      finally { clearTimeout(timeout); pending = false; if (active) setCalendarLoading(false); }
     };
+    void refresh();
     const timer = setInterval(() => void refresh(), 20000);
-    return () => clearInterval(timer);
-  }, []);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { active = false; controller?.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [year]);
+  function selectYear(value: number) { if (value !== year) { setCalendarLoading(true); setCalendarError(''); setYear(value); } }
   async function adopt() {
     setBusy(true); setError('');
     try {
@@ -72,6 +96,7 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
     {error && <div className="account-error" role="alert">{error}</div>}{message && <div className="account-inline-note" role="status">{message}</div>}
     <div className="account-home-grid"><section className="account-card account-goal"><span className="account-eyebrow">今日目标</span><h2>{minutes(summary.today.seconds)} <small>/ 5 分钟</small></h2><div className="account-progress" role="progressbar" aria-label="今日学习目标" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><i style={{ width: `${progress}%` }} /></div><p>{progress >= 100 ? '今天的目标完成了，明天再练几句。' : '播放和主动复习的前台时间会自动记入学习记录。'}</p><a href="/learn" className="btn btn-primary">{resume ? '继续上次学习' : '开始今天的学习'}</a>{resume && <small className="account-resume-name">本机最近学习：{resume}</small>}</section>
     <section className="account-card"><span className="account-eyebrow">最近 7 天</span><div className="account-week-bars" role="img" aria-label={summary.days.map(day => `${day.day}：${day.seconds} 秒`).join('；')}>{summary.days.map(day => <div key={day.day}><span title={`${day.day}：${day.seconds} 秒`}><i style={{ height: `${Math.max(day.seconds ? 3 : 0, day.seconds / peak * 100)}%` }} /></span><small>{day.day.slice(5)}</small></div>)}</div><div className="account-mini-metrics"><span><strong>{summary.learningDays}</strong> 学习天数</span><span><strong>{summary.streak}</strong> 连续天数</span><span><strong>{Math.floor(summary.totalSeconds / 60)}</strong> 累计分钟</span></div><small>当天练习满 3 分钟计为一个有效学习日。</small></section></div>
+    <LearningCalendar key={year} history={summary.history?.year === year ? summary.history : undefined} year={year} years={summary.history?.years || [year]} goalSeconds={summary.goalSeconds} loading={calendarLoading} error={calendarError} onYearChange={selectYear} />
     <section className="account-card account-review-entry"><div><h2>把收藏的表达再练一次</h2><p>这台设备上有 {saved} 个收藏。翻看原句、听发音，再检查是否记住。</p></div><a href="/review" className="btn btn-secondary">去复习 →</a></section>
     {legacy && <section className="account-card"><h2>这台设备还有以前的学习记录</h2><p>可以把旧视频进度、译文缓存和试学收藏关联到当前账号的本地空间，原件保留，内容不会上传。已有账号视频不会被覆盖。</p><button className="btn btn-secondary" type="button" onClick={adopt} disabled={busy}>{busy ? '正在关联…' : '关联本机原有记录'}</button></section>}
     <details className="account-card account-security"><summary>账号安全与恢复码</summary><p>账号：{summary.user.username}。注册于 {new Date(summary.user.createdAt).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })}。账号登录有效期最长 30 天；忘记密码时使用恢复码找回。</p><form onSubmit={recovery} className="account-form"><label>当前密码<input type="password" autoComplete="current-password" required minLength={8} maxLength={128} value={password} onChange={event => setPassword(event.target.value)} /></label><button type="submit" className="btn btn-secondary" disabled={busy}>重新生成恢复码</button></form>{recoveryCode && <><code className="account-recovery-code">{recoveryCode}</code><p>请复制并妥善保存，新码只显示这一次，旧恢复码已失效。</p></>}</details>
