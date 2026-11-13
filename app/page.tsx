@@ -20,7 +20,6 @@ export default function HomePage() {
       <section className="home-film-hero">
         <HomeFilmBackdrop />
         <div className="home-hero">
-          <p className="home-intro home-hero-eyebrow">剧说英语 <span aria-hidden="true">·</span> 核心功能免费</p>
           <h1 className="home-intro home-hero-title">
             看剧练听力<br />跟读练口语
           </h1>
@@ -33,9 +32,9 @@ export default function HomePage() {
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="m5 3 7 5-7 5V3Z" fill="currentColor" />
               </svg>
-              先免费试学
+              立即体验
             </Link>
-            <Link href="/learn" className="btn btn-secondary">开始完整学习</Link>
+            <Link href="/learn" className="btn btn-secondary">导入自己的素材</Link>
           </div>
         </div>
       </section>

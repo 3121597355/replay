@@ -283,15 +283,6 @@ select:disabled {
   margin: 0 auto;
   text-align: center;
 }
-.home-hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
-  color: var(--success-ink);
-  font-size: 13px;
-  font-weight: 500;
-}
 .home-hero-title {
   margin: 0;
   color: var(--text);
@@ -386,10 +377,6 @@ select:disabled {
     min-height: clamp(400px, calc(100svh - 112px), 480px);
     padding: clamp(32px, 6svh, 64px) 20px clamp(52px, 9svh, 80px);
   }
-  .home-hero-eyebrow {
-    margin-bottom: 18px;
-    font-size: 12px;
-  }
   .home-hero-title {
     font-size: clamp(32px, 8.7vw, 40px);
   }
@@ -428,7 +415,6 @@ select:disabled {
   }
 }
 @media (min-width: 801px) and (max-height: 720px) {
-  .home-hero-eyebrow { margin-bottom: 16px; }
   .home-hero-copy { margin-top: 16px; font-size: 15px; line-height: 1.65; }
   .home-hero-features { font-size: 13px; }
   .home-hero-actions { margin-top: 22px; }
