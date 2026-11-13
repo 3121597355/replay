@@ -330,14 +330,14 @@ select:disabled {
   background: url('/home/film-poster.jpg') center 25% / cover;
   filter: blur(4px) saturate(.8);
 }
-.home-film-video {
+.home-film-motion {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center 25%;
   opacity: 0;
 }
-.home-film-video[data-playing='true'] {
+.home-film-motion[data-loaded='true'] {
   opacity: 1;
 }
 .home-film-shade {

@@ -52,11 +52,14 @@ try {
   }
   const end = sceneSeconds * count + fadeSeconds;
   filters.push(`[mix${count}]trim=start=${fadeSeconds}:end=${end.toFixed(2)},setpts=PTS-STARTPTS[out]`);
-  const output = path.join(outputDir, 'film-loop.mp4');
+  const output = path.join(temp, 'film-loop.mp4');
   ffmpeg([...inputs, '-filter_complex_threads', '1', '-filter_complex', filters.join(';'), '-map', '[out]',
     '-an', '-sn', '-c:v', 'libx264', '-preset', 'slow', '-crf', '29', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', output]);
   ffmpeg(['-ss', '0.1', '-i', output, '-frames:v', '1', '-q:v', '4', path.join(outputDir, 'film-poster.jpg')]);
-  console.log(JSON.stringify({ seconds: Number((sceneSeconds * count).toFixed(2)), bytes: fs.statSync(output).size }));
+  const motionImage = path.join(outputDir, 'film-loop.webp');
+  ffmpeg(['-i', output, '-an', '-sn', '-vf', 'scale=640:360,setsar=1,fps=12',
+    '-c:v', 'libwebp_anim', '-lossless', '0', '-compression_level', '6', '-q:v', '42', '-loop', '0', motionImage]);
+  console.log(JSON.stringify({ seconds: Number((sceneSeconds * count).toFixed(2)), width: 640, height: 360, fps: 12, bytes: fs.statSync(motionImage).size }));
 } finally {
   const relative = path.relative(tempBase, path.resolve(temp));
   if (!relative.startsWith('..') && !path.isAbsolute(relative) && relative.startsWith('replay-home-montage-')) {
