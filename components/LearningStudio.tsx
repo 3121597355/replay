@@ -52,6 +52,8 @@ import { clearLearningSession, fileLearningSource, loadLearningSession, matchesL
   rememberLearningSession, saveLearningSession, type LearningSession, type LearningSource } from '@/lib/learning-session';
 import type { AccountUser } from '@/lib/account-types';
 import LearningActivity from './account/LearningActivity';
+import SavedVocabularyCard from './SavedVocabularyCard';
+import SpeakingPractice from './SpeakingPractice';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -62,6 +64,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   const fromWork = fromSlug ? getWork(fromSlug) : undefined;
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const speakingEndRef = useRef<number>();
   const listRef = useRef<HTMLDivElement>(null);
   const cueRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -754,6 +757,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
    * autoplay 不传就跟随当前状态：暂停时点某句仍然暂停，方便停下来看。
    */
   const seekTo = useCallback((idx: number, autoplay?: boolean) => {
+    speakingEndRef.current = undefined;
     const v = videoRef.current;
     const c = cuesRef.current[idx];
     if (!v || !c) return;
@@ -830,6 +834,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     const t = v.currentTime;
     sessionTimeRef.current = t;
     const list = cuesRef.current;
+    if (speakingEndRef.current !== undefined && t >= speakingEndRef.current) {
+      const end = speakingEndRef.current; speakingEndRef.current = undefined; v.pause(); v.currentTime = end; return;
+    }
 
     // 循环目标独立于实时高亮，避免跨过句尾时被下一句抢走。
     if (loopRef.current && !v.paused && !v.seeking) {
@@ -898,6 +905,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   }, [cueIndexAt, onTimeUpdate]);
 
   function toggleLoop() {
+    speakingEndRef.current = undefined;
     loopCueRef.current = selectedRef.current;
     loopRef.current = !loopRef.current;
     setLoop(loopRef.current);
@@ -929,6 +937,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     seekTo(selectedRef.current, true);
   }
 
+  function listenSpeakingCue(cue: Cue) {
+    const index = cues.findIndex(value => value.id === cue.id && value.start === cue.start);
+    if (index < 0) return;
+    setLoop(false); loopRef.current = false;
+    seekTo(index, true); speakingEndRef.current = cue.end;
+  }
+
   function go(delta: number) {
     if (cues.length === 0) return;
     const idx = selectedRef.current;
@@ -940,7 +955,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.defaultPrevented || ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A', 'AUDIO'].includes(tag) || (e.target as HTMLElement)?.isContentEditable || (e.target as HTMLElement)?.closest('[role="button"], [data-speaking-practice]') || document.querySelector('[data-speaking-practice][data-capturing="true"]')) return;
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -1492,6 +1507,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                 </span>
               </div>
             </div>
+            <SpeakingPractice key={videoUrl || 'empty'} cue={cues[selected >= 0 ? selected : 0]} cueNumber={(selected >= 0 ? selected : 0) + 1} onListen={listenSpeakingCue} onPause={() => { speakingEndRef.current = undefined; videoRef.current?.pause(); }} />
           </div>
         </div>
 
@@ -1692,24 +1708,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {saved.map((w, i) => (
-                      <div key={i} className="group rounded-xl border border-[rgb(var(--fg-rgb)/0.08)] bg-[rgb(var(--fg-rgb)/0.03)] p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] leading-relaxed text-[var(--text)]">{w.sentence}</p>
-                          <button
-                            onClick={() => removeSaved(i)}
-                            className="shrink-0 text-[var(--text-faint)] opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            </svg>
-                          </button>
-                        </div>
-                        {w.translation && (
-                          <p className="mt-1 text-[12px] text-[var(--text-dim)]">{w.translation}</p>
-                        )}
-                      </div>
-                    ))}
+                    {saved.map((w, i) => <SavedVocabularyCard key={`${w.word}:${w.addedAt}`} word={w} onRemove={() => removeSaved(i)} />)}
                   </div>
                 )}
               </div>
