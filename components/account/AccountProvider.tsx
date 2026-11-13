@@ -52,7 +52,7 @@ export function NavAccount() {
       <nav aria-label="个人中心导航" onClick={() => setOpen(false)}>
         {user ? <a href="/account">学习概览<span>时长、打卡与学习进度</span></a> : <a href="/learn">学习台<span>继续学习本机素材</span></a>}
         <a href="/review">收藏复习<span>复习保存的词和原句</span></a>
-        {user && <a href="/account#account-settings">账号设置<span>邮箱、登录与账号安全</span></a>}
+        {user && <a href="/account/settings">账号设置<span>账号、安全与数据隐私</span></a>}
       </nav>
     </div>}
   </div>;
