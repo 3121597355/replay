@@ -17,21 +17,25 @@ export default function HomePage() {
   return (
     <HomeMotion>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: siteName, alternateName: 'Replay', url: siteUrl }).replace(/</g, '\\u003c') }} />
-      <section className="home-film-hero px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
+      <section className="home-film-hero">
         <HomeFilmBackdrop />
-        <div className="home-hero relative mx-auto max-w-[760px] text-center">
-          <p className="home-intro mb-5 text-[13px] font-medium text-[var(--success-ink)]">剧说英语 · 核心功能免费</p>
-          <h1 className="home-intro text-balance text-[44px] font-bold leading-[1.08] tracking-[-0.045em] text-[var(--text)] sm:text-[60px]">
-            看剧练听力，<br />跟读练口语。
+        <div className="home-hero">
+          <p className="home-intro home-hero-eyebrow">剧说英语 <span aria-hidden="true">·</span> 核心功能免费</p>
+          <h1 className="home-intro home-hero-title">
+            看剧练听力<br />跟读练口语
           </h1>
-          <p className="home-intro mx-auto mt-5 max-w-[620px] text-[16px] leading-[1.7] text-[var(--text-dim)] [animation-delay:60ms] sm:text-[18px]">
-            导入自己的视频和字幕，逐句精听、查词和收藏，最后导出到 Anki。
+          <p className="home-intro home-hero-copy [animation-delay:60ms]">
+            导入自己的视频和字幕，边看边练。
+            <span className="home-hero-features">逐句精听 · 跟读查词 · 收藏 · 导出 Anki</span>
           </p>
-          <div className="home-intro mt-8 flex flex-wrap items-center justify-center gap-3 [animation-delay:120ms]">
-            <Link href="/learn?trial=1" className="btn btn-primary !px-5">
+          <div className="home-intro home-hero-actions [animation-delay:120ms]">
+            <Link href="/learn?trial=1" className="btn btn-primary">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m5 3 7 5-7 5V3Z" fill="currentColor" />
+              </svg>
               先免费试学
             </Link>
-            <Link href="/learn" className="btn btn-secondary !px-5">开始完整学习</Link>
+            <Link href="/learn" className="btn btn-secondary">开始完整学习</Link>
           </div>
         </div>
       </section>
