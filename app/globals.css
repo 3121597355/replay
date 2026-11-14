@@ -327,8 +327,22 @@ select:disabled {
 .home-film-media {
   position: absolute;
   inset: -20px;
-  background: url('/home/film-poster.jpg') center 25% / cover;
+  background: url('/home/friends.jpg') center 25% / cover;
   filter: blur(4px) saturate(.8);
+}
+.home-film-scene {
+  position: absolute;
+  inset: 0;
+  background-position: center 25%;
+  background-size: cover;
+}
+.home-film-scene[data-role='next'] {
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--film-transition) linear;
+}
+.home-film-scene[data-role='next'][data-reveal='true'] {
+  opacity: 1;
 }
 .home-film-motion {
   width: 100%;

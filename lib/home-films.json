@@ -1,0 +1,13 @@
+{
+  "sourceSeconds": 4,
+  "playbackRate": 0.5,
+  "holdMs": 8000,
+  "transitionMs": 1200,
+  "clips": [
+    { "slug": "friends", "title": "老友记", "originalTitle": "Friends" },
+    { "slug": "interstellar", "title": "星际穿越", "originalTitle": "Interstellar" },
+    { "slug": "breaking-bad", "title": "绝命毒师", "originalTitle": "Breaking Bad" },
+    { "slug": "forrest-gump", "title": "阿甘正传", "originalTitle": "Forrest Gump" },
+    { "slug": "game-of-thrones", "title": "权力的游戏", "originalTitle": "Game of Thrones" }
+  ]
+}
