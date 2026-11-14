@@ -37,9 +37,15 @@ export default function HomePage() {
             <Link href="/learn" className="btn btn-secondary">导入自己的素材</Link>
           </div>
         </div>
+        <a href="#features" className="home-hero-scroll" aria-label="向下查看功能介绍">
+          <span>向下探索</span>
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="m5 7 5 5 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </a>
       </section>
 
-      <section className="home-benefits border-y border-[var(--line)] bg-[var(--surface)]">
+      <section id="features" className="home-benefits border-y border-[var(--line)] bg-[var(--surface)]">
         <div className="home-benefits-grid mx-auto grid max-w-[1120px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 sm:py-12">
           {[
             {
