@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import Catalog from '@/components/Catalog';
 import Poster from '@/components/Poster';
 import HomeMotion from '@/components/HomeMotion';
@@ -6,7 +7,11 @@ import HomeFilmBackdrop from '@/components/HomeFilmBackdrop';
 import { getWork, works } from '@/lib/data';
 import { difficultyLabel } from '@/lib/types';
 import { siteName, siteUrl } from '@/lib/site';
-export const metadata = { alternates: { canonical: '/' }, openGraph: { url: '/', title: '剧说英语｜免费看剧练听力与口语' } };
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { url: '/', title: '剧说英语｜免费看剧练听力与口语' },
+  verification: { other: { 'baidu-site-verification': 'codeva-CqsB4eQIWj' } },
+};
 
 const featuredSlugs = ['friends', 'breaking-bad', 'better-call-saul', 'game-of-thrones'];
 const featured = featuredSlugs
