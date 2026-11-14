@@ -107,6 +107,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
   const [showTrans, setShowTrans] = useState(true);
   const [saved, setSaved] = useState<SavedWord[]>([]);
   const [showSaved, setShowSaved] = useState(false);
+  const [showToolbarTools, setShowToolbarTools] = useState(false);
   const [testResult, setTestResult] = useState<{
     pending: boolean;
     ok?: boolean;
@@ -1127,7 +1128,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
       {/* ============ 顶部工具栏 ============ */}
       <div className="shrink-0 border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] backdrop-blur-xl">
         <div className="learn-toolbar mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
-          <div className="mr-1 min-w-0 max-w-full flex-[1_1_160px]">
+          <div className="learn-toolbar-title mr-1 min-w-0 max-w-full flex-[1_1_160px]">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="title-serif min-w-0 truncate text-[15px] font-semibold text-[var(--text)]">
                 {title}
@@ -1146,13 +1147,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             </div>
           </div>
 
-          <div className="learn-toolbar-actions flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
-            <a href="/download" className="btn btn-ghost">下载视频</a>
+          <div data-tools-expanded={showToolbarTools} className="learn-toolbar-actions flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
+            <a href="/download" className="learn-secondary-action btn btn-ghost">下载视频</a>
             {episodes && episodes.length > 0 && (
               <button
                 onClick={() => setShowPicker(true)}
                 title="选另一集"
-                className="btn btn-ghost gap-1.5"
+                className="learn-secondary-action btn btn-ghost gap-1.5"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <rect x="3.5" y="5" width="17" height="4" rx="1.2" stroke="currentColor" strokeWidth="1.5" />
@@ -1178,7 +1179,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             /></>}
             {videoName && <button onClick={() => void clearCurrentLearning()}
               title="清除浏览器保存的本次素材、字幕和进度，保留生词本与原文件"
-              className="btn btn-ghost">清除记录</button>}
+              className="learn-secondary-action btn btn-ghost">清除记录</button>}
             <button
               onClick={() => loadSample()}
               disabled={loadingSample}
@@ -1195,14 +1196,14 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   ? '从视频里直接抽字幕轨，不需要单独的字幕文件'
                   : '先选一个视频'
               }
-              className={`btn disabled:opacity-35 ${
+              className={`learn-secondary-action btn disabled:opacity-35 ${
                 videoFile && cues.length === 0 ? 'btn-gold' : 'btn-ghost'
               }`}
             >
               {extractState ? '抽取中…' : videoUrl === sample.video ? '重载字幕' : '抽字幕'}
             </button>
 
-            <span className="mx-1 h-4 w-px bg-[rgb(var(--fg-rgb)/0.10)]" />
+            <span className="learn-secondary-action mx-1 h-4 w-px bg-[rgb(var(--fg-rgb)/0.10)]" />
 
             <button
               onClick={doTranslate}
@@ -1216,7 +1217,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                       ? `已有 ${cachedHits} 句缓存译文，只翻缺的 ${pendingTrans} 句`
                       : '用你配的接口批量翻译缺中文的句子'
               }
-              className={`btn gap-1.5 disabled:opacity-40 ${
+              className={`learn-secondary-action btn gap-1.5 disabled:opacity-40 ${
                 jobRunning ? 'btn-gold' : 'btn-ghost'
               }`}
             >
@@ -1244,7 +1245,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               onClick={() => setShowExport(true)}
               disabled={cues.length === 0}
               title="导出 Anki 卡片，或者带译文的时间轴"
-              className="btn btn-ghost gap-1.5 disabled:opacity-40"
+              className="learn-secondary-action btn btn-ghost gap-1.5 disabled:opacity-40"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 4v10m0 0 3.5-3.5M12 14 8.5 10.5M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1266,13 +1267,16 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.20)] hover:text-[var(--text-soft)]"
+              className="learn-secondary-action grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.20)] hover:text-[var(--text-soft)]"
               title="翻译设置"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
                 <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" stroke="currentColor" strokeWidth="1.2" />
               </svg>
+            </button>
+            <button type="button" className="learn-toolbar-more btn btn-ghost" aria-expanded={showToolbarTools} onClick={() => setShowToolbarTools(value => !value)}>
+              {showToolbarTools ? '收起工具' : '更多工具'}
             </button>
           </div>
         </div>
