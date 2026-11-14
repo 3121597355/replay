@@ -328,7 +328,7 @@ select:disabled {
   position: absolute;
   inset: -20px;
   background: url('/home/friends.jpg') center 25% / cover;
-  filter: blur(4px) saturate(.8);
+  filter: blur(.7px) saturate(.94);
 }
 .home-film-scene {
   position: absolute;
@@ -358,16 +358,16 @@ select:disabled {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to bottom, rgb(var(--bg-rgb) / .5), transparent 24%, transparent 64%, var(--page)),
-    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .9) 12%, rgb(var(--bg-rgb) / .7) 48%, rgb(var(--bg-rgb) / .4) 100%);
+    linear-gradient(to bottom, rgb(var(--bg-rgb) / .36), transparent 24%, transparent 64%, var(--page)),
+    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .93) 12%, rgb(var(--bg-rgb) / .66) 48%, rgb(var(--bg-rgb) / .16) 100%);
 }
 [data-theme='dark'] .home-film-media {
-  filter: blur(4px) saturate(.8) brightness(1.15);
+  filter: blur(.7px) saturate(.94) brightness(1.04);
 }
 [data-theme='dark'] .home-film-shade {
   background:
     linear-gradient(to bottom, rgb(var(--bg-rgb) / .55), transparent 24%, transparent 64%, var(--page)),
-    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .82) 12%, rgb(var(--bg-rgb) / .54) 48%, rgb(var(--bg-rgb) / .22) 100%);
+    radial-gradient(ellipse at 50% 45%, rgb(var(--bg-rgb) / .84) 12%, rgb(var(--bg-rgb) / .54) 48%, rgb(var(--bg-rgb) / .12) 100%);
 }
 .home-film-caption {
   position: absolute;
@@ -410,10 +410,10 @@ select:disabled {
     padding: 0 14px;
   }
   .home-film-media {
-    filter: blur(3px) saturate(.8);
+    filter: blur(.5px) saturate(.94);
   }
   [data-theme='dark'] .home-film-media {
-    filter: blur(3px) saturate(.8) brightness(1.15);
+    filter: blur(.5px) saturate(.94) brightness(1.04);
   }
 }
 

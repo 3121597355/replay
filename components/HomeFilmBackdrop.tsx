@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Image from 'next/image';
 import { useHomeMotionEnabled } from '@/components/HomeMotion';
 import films from '@/lib/home-films.json';
+import FilmMotionCanvas from '@/components/FilmMotionCanvas';
 
 type Cycle = { index: number; phase: 'hold' | 'outgoing' | 'incoming'; ready: string[] };
 
@@ -13,15 +14,16 @@ export default function HomeFilmBackdrop() {
   const [inView, setInView] = useState(false);
   const [pageVisible, setPageVisible] = useState(false);
   const [saveData, setSaveData] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [mode, setMode] = useState<'pending' | 'canvas' | 'poster'>('pending');
   const [cycle, setCycle] = useState<Cycle>({ index: 0, phase: 'hold', ready: [] });
-  const animate = enabled && inView && pageVisible && !saveData && !failed;
+  const animate = enabled && inView && pageVisible && !saveData;
   const nextIndex = (cycle.index + 1) % films.clips.length;
   // Switch the caption at the dissolve midpoint, when the next film becomes dominant.
   const displayIndex = cycle.phase === 'incoming' ? nextIndex : cycle.index;
   const film = films.clips[displayIndex];
 
   useEffect(() => {
+    setMode(typeof VideoDecoder === 'function' ? 'canvas' : 'poster');
     const updateVisibility = () => setPageVisible(document.visibilityState === 'visible');
     updateVisibility();
     document.addEventListener('visibilitychange', updateVisibility);
@@ -62,33 +64,41 @@ export default function HomeFilmBackdrop() {
     return () => window.clearTimeout(timer);
   }, [animate, cycle, displayIndex, nextIndex]);
 
+  const fallback = () => {
+    setMode('poster');
+    setCycle({ index: displayIndex, phase: 'hold', ready: [] });
+  };
+
   return (
     <div ref={backdrop} className="home-film-backdrop" aria-hidden="true"
-      data-film={film.slug} data-phase={cycle.phase}
+      data-film={film.slug} data-phase={cycle.phase} data-mode={mode}
       style={{ '--film-transition': `${films.transitionMs}ms` } as CSSProperties}>
       <div className="home-film-media" style={{ backgroundImage: `url('/home/${film.slug}.jpg')` }}>
-        {/* An image keeps decorative motion out of browsers' video takeover players. */}
-        {animate && [cycle.index, nextIndex].map(index => {
+        {/* Canvas frames keep decorative motion out of native video takeover players. */}
+        {animate && mode !== 'pending' && [cycle.index, nextIndex].map(index => {
           const clip = films.clips[index];
+          const onReady = () => setCycle(previous => previous.ready.includes(clip.slug)
+            ? previous : { ...previous, ready: [...previous.ready, clip.slug] });
           return <div key={clip.slug} className="home-film-scene"
             data-role={index === cycle.index ? 'current' : 'next'}
             data-reveal={cycle.phase !== 'hold'} data-film={clip.slug}
             style={{ backgroundImage: `url('/home/${clip.slug}.jpg')` }}>
-            <Image
-              src={`/home/${clip.slug}.webp`}
+            {mode === 'canvas' ? <FilmMotionCanvas slug={clip.slug}
+              playing={index === cycle.index || cycle.phase !== 'hold'}
+              loaded={cycle.ready.includes(clip.slug)} onReady={onReady} onError={fallback} /> : <Image
+              src={`/home/${clip.slug}.jpg`}
               alt=""
-              width={640}
-              height={360}
+              width={1280}
+              height={720}
               unoptimized
               loading="eager"
               decoding="async"
               draggable={false}
               className="home-film-motion"
               data-loaded={cycle.ready.includes(clip.slug)}
-              onLoad={() => setCycle(previous => previous.ready.includes(clip.slug)
-                ? previous : { ...previous, ready: [...previous.ready, clip.slug] })}
-              onError={() => setFailed(true)}
-            />
+              onLoad={onReady}
+              onError={onReady}
+            />}
           </div>;
         })}
       </div>

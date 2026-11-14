@@ -24,6 +24,15 @@ function ffmpeg(args) {
   if (result.status !== 0) throw new Error(result.stderr || `ffmpeg exited ${result.status}`);
 }
 
+function probe(args) {
+  const result = spawnSync('ffprobe', ['-v', 'error', ...args, '-of', 'json'], {
+    encoding: 'utf8', windowsHide: true, maxBuffer: 4_000_000,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr);
+  return JSON.parse(result.stdout);
+}
+
 try {
   for (const clip of films.clips) {
     const source = sources.find(source => source.slug === clip.slug);
@@ -36,18 +45,34 @@ try {
       if (!response.ok) throw new Error(`${source.slug}: HTTP ${response.status}`);
       fs.writeFileSync(input, Buffer.from(await response.arrayBuffer()));
     }
-    // Limit source time before slowing down: four source seconds become eight seconds.
-    const output = path.join(temp, `${clip.slug}.mp4`);
+    const size = probe(['-select_streams', 'v:0', '-show_entries', 'stream=width,height', input]).streams[0];
+    if (size.width < films.width || size.height < films.height) throw new Error(`Use an HD source for ${clip.slug}`);
+    // Annex-B frames are packaged as canvas-only data, without a playable media container.
+    const output = path.join(temp, `${clip.slug}.h264`);
     ffmpeg(['-ss', String(source.start), '-t', String(films.sourceSeconds), '-i', input,
       '-map', '0:v:0', '-an', '-sn', '-vf',
-      `setpts=(PTS-STARTPTS)/${films.playbackRate},scale=640:360:force_original_aspect_ratio=increase,crop=640:360,setsar=1,fps=12`,
-      '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p', output]);
-    ffmpeg(['-i', output, '-frames:v', '1', '-q:v', '4', path.join(outputDir, `${clip.slug}.jpg`)]);
-    const motionImage = path.join(outputDir, `${clip.slug}.webp`);
-    ffmpeg(['-i', output, '-an', '-sn', '-c:v', 'libwebp_anim', '-lossless', '0',
-      '-compression_level', '4', '-q:v', '42', '-loop', '0', motionImage]);
-    console.log(JSON.stringify({ title: clip.title, seconds: films.sourceSeconds / films.playbackRate,
-      playbackRate: films.playbackRate, width: 640, height: 360, fps: 12, bytes: fs.statSync(motionImage).size }));
+      `setpts=(PTS-STARTPTS)/${films.playbackRate},scale=${films.width}:${films.height}:force_original_aspect_ratio=increase,crop=${films.width}:${films.height},setsar=1,fps=${films.fps}`,
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '25', '-profile:v', 'baseline', '-level:v', '3.1',
+      '-bf', '0', '-g', String(films.fps), '-keyint_min', String(films.fps), '-sc_threshold', '0',
+      '-tune', 'zerolatency', '-pix_fmt', 'yuv420p', '-f', 'h264', output]);
+    ffmpeg(['-i', output, '-frames:v', '1', '-q:v', '2', path.join(outputDir, `${clip.slug}.jpg`)]);
+    const payload = fs.readFileSync(output);
+    const packets = probe(['-show_packets', '-show_entries', 'packet=pos,size,flags', output]).packets;
+    let profile;
+    for (let i = 0; i < Math.min(payload.length - 7, 4096); i++) {
+      if (payload[i] === 0 && payload[i + 1] === 0 && payload[i + 2] === 1 && (payload[i + 3] & 31) === 7) {
+        profile = payload.subarray(i + 4, i + 7).toString('hex'); break;
+      }
+    }
+    if (!profile || packets.length < films.sourceSeconds * films.fps - 2) throw new Error(`Incomplete film: ${clip.slug}`);
+    const metadata = Buffer.from(JSON.stringify({ codec: `avc1.${profile}`, width: films.width,
+      height: films.height, fps: films.fps, frames: packets.map(p => [Number(p.pos), Number(p.size), p.flags.includes('K') ? 1 : 0]) }));
+    const header = Buffer.alloc(12); header.write('RPLYM001'); header.writeUInt32LE(metadata.length, 8);
+    const motion = path.join(outputDir, `${clip.slug}.rpl`);
+    fs.writeFileSync(motion, Buffer.concat([header, metadata, payload]));
+    console.log(JSON.stringify({ title: clip.title, seconds: packets.length / films.fps,
+      playbackRate: films.playbackRate, width: films.width, height: films.height, fps: films.fps,
+      bytes: fs.statSync(motion).size, codec: `avc1.${profile}` }));
   }
 } finally {
   const relative = path.relative(tempBase, path.resolve(temp));
