@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { SavedLineClip, SavedWord } from '@/lib/types';
@@ -14,6 +15,7 @@ import VocabularyAudioIcon from './VocabularyAudioIcon';
 export const stopOriginalLinePlayback = () => window.dispatchEvent(new Event('replay:stop-original-line'));
 type Material = { clip: SavedLineClip; url: string; owned: boolean };
 export default function SavedLineReplay({ word, idleContent }: { word: SavedWord; idleContent?: ReactNode }) {
+  const { t } = useLanguage();
   const panelId = useId();
   const owner = getStorageOwner();
   const video = useRef<HTMLMediaElement | null>(null), picker = useRef<HTMLInputElement>(null), generation = useRef(0);
@@ -84,22 +86,22 @@ export default function SavedLineReplay({ word, idleContent }: { word: SavedWord
     setError(''); show(missing, file);
   }
   return <div className="saved-line-replay" data-original-line>
-    <button type="button" className="vocab-audio-action vocab-audio-action-primary" disabled={busy} aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => material ? replay() : void load()}><VocabularyAudioIcon kind="play" /><span>{busy ? '正在读取原句…' : '播放原句'}</span></button>
+    <button type="button" className="vocab-audio-action vocab-audio-action-primary" disabled={busy} aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => material ? replay() : void load()}><VocabularyAudioIcon kind="play" /><span>{busy ? t("正在读取原句…") : t("播放原句")}</span></button>
     {!open && idleContent}
     {open && <div className="saved-line-panel" id={panelId}>
-      <button type="button" className="saved-line-close" aria-label="收起原句播放器" onClick={() => { generation.current++; video.current?.pause(); setMaterial(undefined); setOpen(false); setBusy(false); }}>收起 ×</button>
-      {material && <><Player key={material.url} ref={attachPlayer} src={material.url} controls playsInline preload="metadata" aria-label={`原句回放：${word.sentence}`} onLoadedMetadata={replay} onTimeUpdate={stopAtEnd} onPlay={() => {
+      <button type="button" className="saved-line-close" aria-label={t("收起原句播放器")} onClick={() => { generation.current++; video.current?.pause(); setMaterial(undefined); setOpen(false); setBusy(false); }}>{t("收起 ×")}</button>
+      {material && <><Player key={material.url} ref={attachPlayer} src={material.url} controls playsInline preload="metadata" aria-label={t("原句回放：{0}", word.sentence)} onLoadedMetadata={replay} onTimeUpdate={stopAtEnd} onPlay={() => {
         const player = video.current; if (!player) return;
         if (!Number.isFinite(player.duration) || material.clip.end > player.duration + .05) { player.pause(); setError('原句时间超出素材长度，请回学习台核对后重新收藏。'); return; }
         document.querySelectorAll<HTMLMediaElement>('video,audio').forEach(other => { if (other !== player) other.pause(); }); window.speechSynthesis?.cancel();
         if (player.currentTime < material.clip.start || player.currentTime >= material.clip.end) player.currentTime = material.clip.start;
         setPlaying(true);
       }} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onSeeking={() => { if (video.current && video.current.currentTime < material.clip.start) video.current.currentTime = material.clip.start; stopAtEnd(); }} onError={() => { setPlaying(false); setError('浏览器无法播放这份素材，请在学习台换用 MP4 视频或 MP3/M4A 音频并重新收藏。'); }} />
-        <p className="saved-line-source">{material.clip.videoName} · {formatTime(material.clip.start)}—{formatTime(material.clip.end)} · 句尾自动暂停</p></>}
-      {error && <p className="saved-line-error" role="alert">{error}</p>}
-      {missing && <><input ref={picker} type="file" accept={MEDIA_ACCEPT} hidden onChange={event => { selectFile(event.target.files?.[0]); event.target.value = ''; }} /><button type="button" className="btn btn-secondary" onClick={() => picker.current?.click()}>选择原素材</button></>}
-      {!material && !missing && error && <a href="/learn" className="account-text-link">回学习台</a>}
-      {notice && <p className="saved-line-source" role="status">{notice}</p>}
+        <p className="saved-line-source">{t("{0} · {1}—{2} · 句尾自动暂停", material.clip.videoName, formatTime(material.clip.start), formatTime(material.clip.end))}</p></>}
+      {error && <p className="saved-line-error" role="alert">{t(error)}</p>}
+      {missing && <><input ref={picker} type="file" accept={MEDIA_ACCEPT} hidden onChange={event => { selectFile(event.target.files?.[0]); event.target.value = ''; }} /><button type="button" className="btn btn-secondary" onClick={() => picker.current?.click()}>{t("选择原素材")}</button></>}
+      {!material && !missing && error && <a href="/learn" className="account-text-link">{t("回学习台")}</a>}
+      {notice && <p className="saved-line-source" role="status">{t(notice)}</p>}
     </div>}
   </div>;
 }

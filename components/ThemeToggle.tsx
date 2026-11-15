@@ -1,10 +1,12 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
 export default function ThemeToggle() {
+  const { t } = useLanguage();
   const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -31,8 +33,8 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? '切换到浅色模式' : '切换到深色模式'}
-      title={isDark ? '当前深色，点击切换浅色' : '当前浅色，点击切换深色'}
+      aria-label={isDark ? t("切换到浅色模式") : t("切换到深色模式")}
+      title={isDark ? t("当前深色，点击切换浅色") : t("当前浅色，点击切换深色")}
       aria-pressed={isDark}
       className="inline-flex h-11 min-w-[44px] shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors duration-200 hover:bg-[var(--surface-3)] active:bg-[var(--surface-3)] sm:h-9 sm:px-2.5"
     >
@@ -64,8 +66,8 @@ export default function ThemeToggle() {
           </>
         )}
       </svg>
-      <span className="hidden whitespace-nowrap text-[12px] font-semibold min-[360px]:inline" aria-hidden="true">{isDark ? '深色' : '浅色'}</span>
-      <span className="sr-only" role="status">{mounted ? `当前为${isDark ? '深色' : '浅色'}模式` : ''}</span>
+      <span className="hidden whitespace-nowrap text-[12px] font-semibold min-[360px]:inline" aria-hidden="true">{isDark ? t("深色") : t("浅色")}</span>
+      <span className="sr-only" role="status">{mounted ? t("当前为{0}模式", isDark ? t('深色') : t('浅色')) : ''}</span>
     </button>
   );
 }

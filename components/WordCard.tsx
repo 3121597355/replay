@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import type { LookupResult } from '@/lib/dict';
 import { speak } from '@/lib/dict';
@@ -22,6 +23,7 @@ export default function WordCard({
   onSave: (word: string, sentence: string, def: string) => void;
   isSaved: (word: string) => boolean;
 }) {
+  const { t } = useLanguage();
   if (!state) return null;
 
   const { word, sentence, result, loading } = state;
@@ -43,7 +45,7 @@ export default function WordCard({
               )}
               <button
                 onClick={() => speak(headword)}
-                title="朗读"
+                title={t("朗读")}
                 className="grid h-5 w-5 place-items-center rounded text-[var(--text-dim)] transition-colors bg-transparent hover:bg-[var(--surface-2)] hover:text-[var(--gold-ink)]"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -52,16 +54,14 @@ export default function WordCard({
                 </svg>
               </button>
               {result?.viaLemma && (
-                <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-dim)]">
-                  {word} 的变形
-                </span>
+                <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-dim)]">{t("{0} 的变形", word)}</span>
               )}
             </div>
 
             {/* 释义 */}
             <div className="mt-1.5">
               {loading ? (
-                <span className="text-[12.5px] text-[var(--text-dim)]">查…</span>
+                <span className="text-[12.5px] text-[var(--text-dim)]">{t("查…")}</span>
               ) : defs.length > 0 ? (
                 <ul className="space-y-0.5">
                   {defs.map((d, i) => (
@@ -72,16 +72,14 @@ export default function WordCard({
                 </ul>
               ) : (
                 <p className="text-[12px] leading-relaxed text-[var(--text-dim)]">
-                  本地词典没收录这个词。
-                  点别的词试试。
-                </p>
+                  {t("本地词典没收录这个词。 点别的词试试。")}</p>
               )}
             </div>
           </div>
 
           <button
             onClick={onClose}
-            title="关闭"
+            title={t("关闭")}
             className="grid h-6 w-6 shrink-0 place-items-center rounded text-[var(--text-dim)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -113,15 +111,13 @@ export default function WordCard({
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                   <path d="m5 13 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                已在生词本
-              </>
+                {t("已在生词本")}</>
             ) : (
               <>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                   <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8L12 3.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 </svg>
-                加入生词本
-              </>
+                {t("加入生词本")}</>
             )}
           </button>
         )}

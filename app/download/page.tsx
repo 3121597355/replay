@@ -1,4 +1,6 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
+
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +10,7 @@ const COMPONENT_DOWNLOAD = 'https://github.com/3121597355/replay/releases/downlo
 const COMPONENT_GUIDE = 'https://github.com/3121597355/replay/tree/main/services/video-downloader#第一次使用';
 
 function DownloadInner() {
+  const { t } = useLanguage();
   const params = useSearchParams();
   const receiving = validImportToken(params.get('receive')) && params.get('tool') === COMPANION_ORIGIN;
   const [message, setMessage] = useState<string>();
@@ -117,63 +120,64 @@ function DownloadInner() {
   const setup = <>
     <ol className="grid gap-4 sm:grid-cols-3">
       {[
-        ['下载组件', 'Windows 版已配好运行环境，只需下载一次。'],
-        ['解压并启动', '解压后双击「启动 Replay 下载组件.bat」。'],
-        ['粘贴链接下载', '保持组件运行，在下方粘贴视频链接。'],
+        [t("下载组件"), t("Windows 版已配好运行环境，只需下载一次。")],
+        [t("解压并启动"), t("解压后双击「启动 Replay 下载组件.bat」。")],
+        [t("粘贴链接下载"), t("保持组件运行，在下方粘贴视频链接。")],
       ].map(([title, detail], index) => <li key={title} className="flex gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-sm">{index + 1}</span>
         <div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1 text-sm leading-6 text-[var(--text-dim)]">{detail}</p></div>
       </li>)}
     </ol>
     <div className="mt-5 flex flex-wrap gap-3">
-      <a className="btn btn-primary !min-h-[44px]" href={COMPONENT_DOWNLOAD}>下载 Windows 组件</a>
-      {connection !== 'connected' && <button type="button" onClick={() => connectFrame()} disabled={busy || connection === 'connecting'} className="btn btn-ghost !min-h-[44px]">{connection === 'connecting' ? '连接中…' : '已启动，重新连接'}</button>}
-      <a className="btn btn-ghost !min-h-[44px]" href={COMPONENT_GUIDE} target="_blank" rel="noreferrer">使用说明 / 其他系统</a>
+      <a className="btn btn-primary !min-h-[44px]" href={COMPONENT_DOWNLOAD}>{t("下载 Windows 组件")}</a>
+      {connection !== 'connected' && <button type="button" onClick={() => connectFrame()} disabled={busy || connection === 'connecting'} className="btn btn-ghost !min-h-[44px]">{connection === 'connecting' ? t("连接中…") : t("已启动，重新连接")}</button>}
+      <a className="btn btn-ghost !min-h-[44px]" href={COMPONENT_GUIDE} target="_blank" rel="noreferrer">{t("使用说明 / 其他系统")}</a>
     </div>
-    <p className="mt-3 text-[12px] leading-6 text-[var(--text-faint)]">Windows 10 / 11（64 位）· 推荐 Chrome / Edge · 电脑重启后需再次启动组件</p>
+    <p className="mt-3 text-[12px] leading-6 text-[var(--text-faint)]">{t("Windows 10 / 11（64 位）· 推荐 Chrome / Edge · 电脑重启后需再次启动组件")}</p>
   </>;
 
   return (
     <main className="mx-auto max-w-[1120px] px-4 py-7 sm:px-6 sm:py-10">
       <div className="mb-4 flex flex-wrap items-center gap-2 text-[13px] text-[var(--text-dim)]">
-        <span className="rounded-full border border-[var(--line)] px-2.5 py-1">可选拓展 · 开源 · 本地下载</span>
-        <span role="status" aria-live="polite">{connection === 'connected' ? '下载组件已连接' : connection === 'connecting' ? '正在检测下载组件…' : '下载组件尚未启动'}</span>
+        <span className="rounded-full border border-[var(--line)] px-2.5 py-1">{t("可选拓展 · 开源 · 本地下载")}</span>
+        <span role="status" aria-live="polite">{connection === 'connected' ? t("下载组件已连接") : connection === 'connecting' ? t("正在检测下载组件…") : t("下载组件尚未启动")}</span>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">只有链接？这里一键下载视频！</h1>
-          <p className="mt-3 max-w-[740px] text-sm leading-7 text-[var(--text-dim)]">剧说英语的可选拓展功能：下载支持来源的视频、电影等内容，可单独保存，也能分离字幕后导入学习。</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("只有链接？这里一键下载视频！")}</h1>
+          <p className="mt-3 max-w-[740px] text-sm leading-7 text-[var(--text-dim)]">{t("剧说英语的可选拓展功能：下载支持来源的视频、电影等内容，可单独保存，也能分离字幕后导入学习。")}</p>
         </div>
-        <div><button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-ghost !min-h-[44px]">导入已有 MP4 / SRT</button><p className="mt-2 text-xs text-[var(--text-faint)]">已有文件可直接学习，无需组件</p></div>
+        <div><button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-ghost !min-h-[44px]">{t("导入已有 MP4 / SRT")}</button><p className="mt-2 text-xs text-[var(--text-faint)]">{t("已有文件可直接学习，无需组件")}</p></div>
       </div>
 
-      {connection === 'connected' ? <details className="mt-5 rounded-xl border border-[var(--line)] p-4 text-sm" aria-label="下载组件使用指引">
-        <summary className="cursor-pointer text-[var(--text-dim)]">组件下载与使用说明</summary><div className="mt-5">{setup}</div>
-      </details> : <section className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-7" aria-label="下载组件使用指引">
-        <h2 className="mb-5 text-lg font-semibold">首次使用：先下载并启动本地组件</h2>{setup}
+      {connection === 'connected' ? <details className="mt-5 rounded-xl border border-[var(--line)] p-4 text-sm" aria-label={t("下载组件使用指引")}>
+        <summary className="cursor-pointer text-[var(--text-dim)]">{t("组件下载与使用说明")}</summary><div className="mt-5">{setup}</div>
+      </details> : <section className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-7" aria-label={t("下载组件使用指引")}>
+        <h2 className="mb-5 text-lg font-semibold">{t("首次使用：先下载并启动本地组件")}</h2>{setup}
       </section>}
 
-      {message && <p role="status" aria-live="polite" className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm leading-6">{message}</p>}
+      {message && <p role="status" aria-live="polite" className="mt-5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm leading-6">{t(message)}</p>}
 
-      <section className="mt-6" aria-label="内置视频下载器" aria-busy={connection === 'connecting'}>
-        {frameUrl && <iframe ref={frameRef} title="剧说英语内置视频下载器" src={frameUrl} {...{ credentialless: '' }}
+      <section className="mt-6" aria-label={t("内置视频下载器")} aria-busy={connection === 'connecting'}>
+        {frameUrl && <iframe ref={frameRef} title={t("剧说英语内置视频下载器")} src={frameUrl} {...{ credentialless: '' }}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
           allow="clipboard-read; clipboard-write" onLoad={syncFrame}
           className="w-full border-0" style={{ height: frameHeight, display: connection === 'connected' ? 'block' : 'none' }} />}
       </section>
 
-      <input ref={fileRef} type="file" accept=".mp4,.srt" multiple hidden aria-label="选择配套视频与字幕" onChange={event => {
+      <input ref={fileRef} type="file" accept=".mp4,.srt" multiple hidden aria-label={t("选择配套视频与字幕")} onChange={event => {
         const files = Array.from(event.target.files || []);
         const videos = files.filter(file => /\.mp4$/i.test(file.name));
         if (videos.length !== 1) { setMessage('请选择一份 MP4 和它对应的 SRT。'); return; }
         void receiveBundle({ video: videos[0], subtitles: files.filter(file => /\.srt$/i.test(file.name)) });
         event.target.value = '';
       }} />
-      <p className="mt-5 text-xs leading-6 text-[var(--text-faint)]">视频与字幕保存在本机，不上传到剧说英语。支持分离文本软字幕；硬字幕和图片字幕暂不能直接转为 SRT。</p>
+      <p className="mt-5 text-xs leading-6 text-[var(--text-faint)]">{t("视频与字幕保存在本机，不上传到剧说英语。支持分离文本软字幕；硬字幕和图片字幕暂不能直接转为 SRT。")}</p>
     </main>
   );
 }
 
 export default function DownloadPage() {
-  return <Suspense fallback={<main className="p-8">正在加载下载页…</main>}><DownloadInner /></Suspense>;
+  const { t } = useLanguage();
+  return <Suspense fallback={<main className="p-8">{t("正在加载下载页…")}</main>}><DownloadInner /></Suspense>;
 }

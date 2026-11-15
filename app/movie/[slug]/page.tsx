@@ -1,3 +1,5 @@
+import { LanguageContent } from '@/components/LanguageProvider';
+import EnglishMovieGuide from '@/components/EnglishMovieGuide';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -32,6 +34,7 @@ export default async function MoviePage(props: { params: Promise<{ slug: string 
     : `${work.originalTitle} ${work.year} chs eng`;
 
   return (
+    <LanguageContent english={<EnglishMovieGuide work={work} />}>
     <div className="mx-auto max-w-[1120px] px-4 pb-14 pt-8 sm:px-6 sm:pt-10">
       <nav className="flex items-center gap-2 text-[13px] text-[var(--text-faint)]" aria-label="面包屑">
         <Link href="/" className="hover:text-[var(--link)] hover:underline">首页</Link>
@@ -131,6 +134,7 @@ export default async function MoviePage(props: { params: Promise<{ slug: string 
         </article>
       </div>
     </div>
+    </LanguageContent>
   );
 }
 

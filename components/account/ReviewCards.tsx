@@ -1,4 +1,6 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
+
 import { useCallback, useEffect, useState } from 'react';
 import { loadSavedWords } from '@/lib/saved-words';
 import { storageKey } from '@/lib/account-storage';
@@ -15,6 +17,7 @@ import { savedSentenceAnswerLabel } from '@/lib/saved-sentence';
 import VocabularyAudioIcon from '@/components/VocabularyAudioIcon';
 const identity = (word: SavedWord) => `${word.word.toLowerCase()}:${word.addedAt}`;
 export default function ReviewCards() {
+  const { t } = useLanguage();
   const [cards, setCards] = useState<SavedWord[]>([]), [schedule, setSchedule] = useState<Schedule>({}), [index, setIndex] = useState(0), [answer, setAnswer] = useState(false), [ready, setReady] = useState(false), [notice, setNotice] = useState('');
   useEffect(() => {
     let previous: Schedule = {};
@@ -48,39 +51,39 @@ export default function ReviewCards() {
   const sentenceOnly = !current?.word || current.word === current.sentence;
   return <div className="account-review review-page">
     <LearningActivity enabled={ready && !!current} review />
-    <a href="/account" className="review-back-link">← 学习概览</a>
-    <header className="review-page-heading"><span className="account-eyebrow">收藏复习</span><h1>再练一遍，记得更牢。</h1><p>先回忆意思，听听原声，再翻面检查答案。</p></header>
-    {notice && <div role="status" className="account-inline-note">{notice}</div>}
-    {!ready ? <div className="account-card" role="status">正在读取本机收藏…</div> : current ? <>
-      <div className="review-session-bar"><span>本轮复习 <strong>{index + 1}<span> / {cards.length}</span></strong></span><VocabularyMotionToggle /></div>
-      <div className="review-progress" role="progressbar" aria-label="本轮已完成" aria-valuemin={0} aria-valuemax={cards.length} aria-valuenow={index}><span style={{ width: `${index / cards.length * 100}%` }} /></div>
+    <a href="/account" className="review-back-link">{t("← 学习概览")}</a>
+    <header className="review-page-heading"><span className="account-eyebrow">{t("收藏复习")}</span><h1>{t("再练一遍，记得更牢。")}</h1><p>{t("先回忆意思，听听原声，再翻面检查答案。")}</p></header>
+    {notice && <div role="status" className="account-inline-note">{t(notice)}</div>}
+    {!ready ? <div className="account-card" role="status">{t("正在读取本机收藏…")}</div> : current ? <>
+      <div className="review-session-bar"><span>{t("本轮复习")}<strong>{index + 1}<span> / {cards.length}</span></strong></span><VocabularyMotionToggle /></div>
+      <div className="review-progress" role="progressbar" aria-label={t("本轮已完成")} aria-valuemin={0} aria-valuemax={cards.length} aria-valuenow={index}><span style={{ width: `${index / cards.length * 100}%` }} /></div>
       <div className="review-workspace">
       <section className="review-main">
         <div className="review-content">
-          <div className="review-audio-heading"><span className="review-step">01</span><h2>回忆与释义</h2></div>
-          <p className="review-source-name">先回忆意思，再翻面检查答案。</p>
+          <div className="review-audio-heading"><span className="review-step">01</span><h2>{t("回忆与释义")}</h2></div>
+          <p className="review-source-name">{t("先回忆意思，再翻面检查答案。")}</p>
           <div className="account-flashcard review-flashcard">
             <VocabularyFlipCard key={identity(current)} flipped={answer} onFlip={setAnswer} label={current.word || current.sentence} answerLabel={savedSentenceAnswerLabel(current)}
-              front={<><span className="vocab-flip-label">{sentenceOnly ? '英文原句' : '收藏的表达'}</span>{!sentenceOnly && <h2 lang="en">{current.word}</h2>}<p className="account-review-sentence" lang="en">{current.sentence || current.word}</p></>}
+              front={<><span className="vocab-flip-label">{sentenceOnly ? t("英文原句") : t("收藏的表达")}</span>{!sentenceOnly && <h2 lang="en">{current.word}</h2>}<p className="account-review-sentence" lang="en">{current.sentence || current.word}</p></>}
               back={<SavedVocabularyAnswer word={current} enabled={answer} />} />
           </div>
         </div>
         <div className="review-decision-bar">
-          {answer ? <div className="review-decision-buttons"><button type="button" className="btn btn-secondary" onClick={() => finish(false)}>还不熟，稍后再练</button><button type="button" className="btn btn-primary" onClick={() => finish(true)}>记住了，下一句</button></div> : <button type="button" className="btn btn-primary review-reveal" onClick={() => setAnswer(true)}>翻看答案</button>}
-          <p className="review-keyboard-hint">空格翻面{answer && ' · 1 稍后再练 · 2 记住了'}</p>
+          {answer ? <div className="review-decision-buttons"><button type="button" className="btn btn-secondary" onClick={() => finish(false)}>{t("还不熟，稍后再练")}</button><button type="button" className="btn btn-primary" onClick={() => finish(true)}>{t("记住了，下一句")}</button></div> : <button type="button" className="btn btn-primary review-reveal" onClick={() => setAnswer(true)}>{t("翻看答案")}</button>}
+          <p className="review-keyboard-hint">{t("空格翻面{0}", answer ? t(' · 1 稍后再练 · 2 记住了') : '')}</p>
         </div>
       </section>
-      <aside className="review-audio" aria-label="原句与发音">
-        <div className="review-audio-heading"><span className="review-step">02</span><h2>原声与发音</h2></div>
-        <p className="review-source-name" title={current.clip?.videoName}>{current.clip?.videoName || '收藏对应的影视或音频'}</p>
+      <aside className="review-audio" aria-label={t("原句与发音")}>
+        <div className="review-audio-heading"><span className="review-step">02</span><h2>{t("原声与发音")}</h2></div>
+        <p className="review-source-name" title={current.clip?.videoName}>{current.clip?.videoName || t("收藏对应的影视或音频")}</p>
         <div className="account-original-actions">
-          <SavedLineReplay key={identity(current)} word={current} idleContent={<div className="review-audio-idle"><span><VocabularyAudioIcon kind="play" /></span><strong>这句台词，是怎么说的？</strong><p>点击播放原句，听听原来的语气。</p></div>} />
-          <button type="button" className="vocab-audio-action" onClick={() => { stopOriginalLinePlayback(); speak(current.word || current.sentence); }}><VocabularyAudioIcon kind="speaker" /><span>{sentenceOnly ? '听句子发音' : '听单词发音'}</span></button>
+          <SavedLineReplay key={identity(current)} word={current} idleContent={<div className="review-audio-idle"><span><VocabularyAudioIcon kind="play" /></span><strong>{t("这句台词，是怎么说的？")}</strong><p>{t("点击播放原句，听听原来的语气。")}</p></div>} />
+          <button type="button" className="vocab-audio-action" onClick={() => { stopOriginalLinePlayback(); speak(current.word || current.sentence); }}><VocabularyAudioIcon kind="speaker" /><span>{sentenceOnly ? t("听句子发音") : t("听单词发音")}</span></button>
         </div>
-        <p className="review-audio-note">原声播到句尾会停下，可以跟着说一遍。</p>
+        <p className="review-audio-note">{t("原声播到句尾会停下，可以跟着说一遍。")}</p>
       </aside>
-      <span className="sr-only" role="status" aria-live="polite">第 {index + 1} 条，共 {cards.length} 条：{current.word || current.sentence}</span>
-    </div></> : <section className="account-card review-empty"><h2>{cards.length ? '这轮复习完成了。' : '今天没有待复习的收藏。'}</h2><p>{cards.length ? `已复习 ${cards.length} 个表达，下次按复习时间继续。` : '去学习台收藏几个词和句子，回来就能练。已有收藏按计划到期后会出现在这里。'}</p><a href="/learn" className="btn btn-primary">回学习台</a></section>}
-    <p className="review-storage-note">收藏、原素材和复习进度保存在这台设备，无需上传。</p>
+      <span className="sr-only" role="status" aria-live="polite">{t("第 {0} 条，共 {1} 条：{2}", index + 1, cards.length, current.word || current.sentence)}</span>
+    </div></> : <section className="account-card review-empty"><h2>{cards.length ? t("这轮复习完成了。") : t("今天没有待复习的收藏。")}</h2><p>{cards.length ? t("已复习 {0} 个表达，下次按复习时间继续。", cards.length) : t("去学习台收藏几个词和句子，回来就能练。已有收藏按计划到期后会出现在这里。")}</p><a href="/learn" className="btn btn-primary">{t("回学习台")}</a></section>}
+    <p className="review-storage-note">{t("收藏、原素材和复习进度保存在这台设备，无需上传。")}</p>
   </div>;
 }

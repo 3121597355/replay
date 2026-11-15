@@ -1,4 +1,6 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
+
 import { useEffect, useState } from 'react';
 import type { AccountSummary } from '@/lib/account-types';
 import { loadSavedWords, persistSavedWords } from '@/lib/saved-words';
@@ -6,7 +8,7 @@ import { storageKey } from '@/lib/account-storage';
 import { learningStore, loadLearningSession } from '@/lib/learning-session';
 import type { SavedWord } from '@/lib/types';
 import LearningCalendar from './LearningCalendar';
-const minutes = (seconds: number) => seconds > 0 && seconds < 60 ? '不到 1 分钟' : `${Math.floor(seconds / 60)} 分钟`;
+const minutes = (seconds: number, language: 'zh' | 'en') => language === 'en' ? seconds > 0 && seconds < 60 ? 'Less than 1 minute' : `${Math.floor(seconds / 60)} minutes` : seconds > 0 && seconds < 60 ? '不到 1 分钟' : `${Math.floor(seconds / 60)} 分钟`;
 function oldWords(): SavedWord[] {
   const result: SavedWord[] = [];
   for (const key of ['replay.saved', 'replay.saved.trial']) {
@@ -15,6 +17,7 @@ function oldWords(): SavedWord[] {
   return result;
 }
 export default function LearningHome({ initial }: { initial: AccountSummary }) {
+  const { t, language } = useLanguage();
   useEffect(() => {
     const settings = () => {
       if (window.location.hash !== '#account-settings') return;
@@ -80,13 +83,13 @@ export default function LearningHome({ initial }: { initial: AccountSummary }) {
   }
   const progress = Math.min(100, summary.today.seconds / summary.goalSeconds * 100);
   const peak = Math.max(300, ...summary.days.map(day => day.seconds));
-  return <div className="account-home"><div className="account-heading"><div><span className="account-eyebrow">学习概览</span><h1>{summary.user.username}，今天也练几句。</h1><p>不必一次学很久，先完成今天的 5 分钟。</p></div><a className="account-text-link" href="/account/settings">账号设置</a></div>
-    {error && <div className="account-error" role="alert">{error}</div>}{message && <div className="account-inline-note" role="status">{message}</div>}
-    <div className="account-home-grid"><section className="account-card account-goal"><span className="account-eyebrow">今日目标</span><h2>{minutes(summary.today.seconds)} <small>/ 5 分钟</small></h2><div className="account-progress" role="progressbar" aria-label="今日学习目标" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><i style={{ width: `${progress}%` }} /></div><p>{progress >= 100 ? '今天的目标完成了，明天再练几句。' : '播放和主动复习的前台时间会自动记入学习记录。'}</p><a href="/learn" className="btn btn-primary">{resume ? '继续上次学习' : '开始今天的学习'}</a>{resume && <small className="account-resume-name">本机最近学习：{resume}</small>}</section>
-    <section className="account-card"><span className="account-eyebrow">最近 7 天</span><div className="account-week-bars" role="img" aria-label={summary.days.map(day => `${day.day}：${day.seconds} 秒`).join('；')}>{summary.days.map(day => <div key={day.day}><span title={`${day.day}：${day.seconds} 秒`}><i style={{ height: `${Math.max(day.seconds ? 3 : 0, day.seconds / peak * 100)}%` }} /></span><small>{day.day.slice(5)}</small></div>)}</div><div className="account-mini-metrics"><span><strong>{summary.learningDays}</strong> 学习天数</span><span><strong>{summary.streak}</strong> 连续天数</span><span><strong>{Math.floor(summary.totalSeconds / 60)}</strong> 累计分钟</span></div><small>当天练习满 3 分钟计为一个有效学习日。</small></section></div>
+  return <div className="account-home"><div className="account-heading"><div><span className="account-eyebrow">{t("学习概览")}</span><h1>{t("{0}，今天也练几句。", summary.user.username)}</h1><p>{t("不必一次学很久，先完成今天的 5 分钟。")}</p></div><a className="account-text-link" href="/account/settings">{t("账号设置")}</a></div>
+    {error && <div className="account-error" role="alert">{t(error)}</div>}{message && <div className="account-inline-note" role="status">{t(message)}</div>}
+    <div className="account-home-grid"><section className="account-card account-goal"><span className="account-eyebrow">{t("今日目标")}</span><h2>{minutes(summary.today.seconds, language)} <small>{t("/ 5 分钟")}</small></h2><div className="account-progress" role="progressbar" aria-label={t("今日学习目标")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><i style={{ width: `${progress}%` }} /></div><p>{progress >= 100 ? t("今天的目标完成了，明天再练几句。") : t("播放和主动复习的前台时间会自动记入学习记录。")}</p><a href="/learn" className="btn btn-primary">{resume ? t("继续上次学习") : t("开始今天的学习")}</a>{resume && <small className="account-resume-name">{t("本机最近学习：{0}", resume)}</small>}</section>
+    <section className="account-card"><span className="account-eyebrow">{t("最近 7 天")}</span><div className="account-week-bars" role="img" aria-label={summary.days.map(day => `${day.day}：${day.seconds} 秒`).join('；')}>{summary.days.map(day => <div key={day.day}><span title={t("{0}：{1} 秒", day.day, day.seconds)}><i style={{ height: `${Math.max(day.seconds ? 3 : 0, day.seconds / peak * 100)}%` }} /></span><small>{day.day.slice(5)}</small></div>)}</div><div className="account-mini-metrics"><span><strong>{summary.learningDays}</strong> {t("学习天数")}</span><span><strong>{summary.streak}</strong> {t("连续天数")}</span><span><strong>{Math.floor(summary.totalSeconds / 60)}</strong> {t("累计分钟")}</span></div><small>{t("当天练习满 3 分钟计为一个有效学习日。")}</small></section></div>
     <LearningCalendar key={year} history={summary.history?.year === year ? summary.history : undefined} year={year} years={summary.history?.years || [year]} goalSeconds={summary.goalSeconds} loading={calendarLoading} error={calendarError} onYearChange={selectYear} />
-    <section className="account-card account-review-entry"><div><h2>把收藏的表达再练一次</h2><p>这台设备上有 {saved} 个收藏。翻看原句、听发音，再检查是否记住。</p></div><a href="/review" className="btn btn-secondary">去复习 →</a></section>
-    {legacy && <section className="account-card"><h2>这台设备还有以前的学习记录</h2><p>可以把旧视频进度、译文缓存和试学收藏关联到当前账号的本地空间，原件保留，内容不会上传。已有账号视频不会被覆盖。</p><button className="btn btn-secondary" type="button" onClick={adopt} disabled={busy}>{busy ? '正在关联…' : '关联本机原有记录'}</button></section>}
-    <p className="account-footnote">账号保存用户名、已验证邮箱和学习时间，视频、字幕、收藏与具体播放位置保存在本机。换设备需重新选择素材；自带翻译接口设置不会随账号上传。<a href="/privacy">隐私说明</a></p>
+    <section className="account-card account-review-entry"><div><h2>{t("把收藏的表达再练一次")}</h2><p>{t("这台设备上有 {0} 个收藏。翻看原句、听发音，再检查是否记住。", saved)}</p></div><a href="/review" className="btn btn-secondary">{t("去复习 →")}</a></section>
+    {legacy && <section className="account-card"><h2>{t("这台设备还有以前的学习记录")}</h2><p>{t("可以把旧视频进度、译文缓存和试学收藏关联到当前账号的本地空间，原件保留，内容不会上传。已有账号视频不会被覆盖。")}</p><button className="btn btn-secondary" type="button" onClick={adopt} disabled={busy}>{busy ? t("正在关联…") : t("关联本机原有记录")}</button></section>}
+    <p className="account-footnote">{t("账号保存用户名、已验证邮箱和学习时间，视频、字幕、收藏与具体播放位置保存在本机。换设备需重新选择素材；自带翻译接口设置不会随账号上传。")}<a href="/privacy">{t("隐私说明")}</a></p>
   </div>;
 }

@@ -88,3 +88,39 @@ test('email requests activate only after accepted send and never return OTP, ski
     assert.equal((await call('bind-email',{password:'password-fixture'})).status,401);
   } finally { global.fetch=old.fetch; for(const [key,value] of Object.entries({REPLAY_ACCOUNTS_URL:old.url,REPLAY_ACCOUNTS_SECRET:old.secret,RESEND_API_KEY:old.key,RESEND_EMAIL_DOMAIN:old.domain})) { if(value===undefined) delete process.env[key]; else process.env[key]=value; } }
 });
+test('email language localizes messages without changing verification or exposing the code', async () => {
+  const previous = { fetch: global.fetch, url: process.env.REPLAY_ACCOUNTS_URL, secret: process.env.REPLAY_ACCOUNTS_SECRET, key: process.env.RESEND_API_KEY, domain: process.env.RESEND_EMAIL_DOMAIN };
+  Object.assign(process.env, { REPLAY_ACCOUNTS_URL: 'https://private.test', REPLAY_ACCOUNTS_SECRET: 'test-secret', RESEND_API_KEY: 'fixture-key', RESEND_EMAIL_DOMAIN: 'notify.example.com' });
+  try {
+    const deliveries: { from: string; subject: string; text: string }[] = [];
+    let activated = 0;
+    global.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/email-code')) {
+        assert.deepEqual(JSON.parse(init!.body as string), { email: 'test@example.com', purpose: 'signup' });
+        return Response.json({ challengeId: '12345678-1234-1234-1234-123456789abc', code: '123456' });
+      }
+      if (url.endsWith('/email-sent')) { activated++; return Response.json({ ok: true }); }
+      assert.equal(url, 'https://api.resend.com/emails');
+      deliveries.push(JSON.parse(init!.body as string));
+      return Response.json({ id: 'fixture' });
+    };
+    for (const language of ['en', 'untrusted-language']) {
+      const response = await call('email-code', { email: 'test@example.com', purpose: 'signup', accepted: true, language });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).code, undefined);
+    }
+    assert.equal(activated, 2);
+    assert.equal(deliveries[0].from, 'Replay English <account@notify.example.com>');
+    assert.match(deliveries[0].subject, /Verification code to create an account/);
+    assert.match(deliveries[0].text, /Verification code: 123456/);
+    assert.match(deliveries[0].text, /expires in 10 minutes/);
+    assert.match(deliveries[0].text, /Do not share/);
+    assert.equal(deliveries[1].from, '剧说英语 <account@notify.example.com>');
+  } finally {
+    global.fetch = previous.fetch;
+    for (const [key, value] of Object.entries({ REPLAY_ACCOUNTS_URL: previous.url, REPLAY_ACCOUNTS_SECRET: previous.secret, RESEND_API_KEY: previous.key, RESEND_EMAIL_DOMAIN: previous.domain })) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});

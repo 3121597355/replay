@@ -1,4 +1,5 @@
 'use client';
+import { LanguageToggle, useLanguage } from '@/components/LanguageProvider';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -13,6 +14,7 @@ const links = [
 ];
 
 export default function Nav() {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const isLearn = pathname.startsWith('/learn');
   const isDownload = pathname === '/download';
@@ -27,14 +29,13 @@ export default function Nav() {
       }`}
     >
       <div className="mx-auto flex min-h-16 w-full min-w-0 max-w-[1120px] flex-wrap items-center gap-y-1 px-3 sm:px-6">
-        <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label="剧说英语 首页">
+        <HomeLink href="/" className="mr-2 flex shrink-0 items-center gap-2 rounded-md sm:mr-5" aria-label={t("剧说英语 首页")}>
           <ReplayMark className="grid h-8 w-8 place-items-center rounded-md bg-[var(--accent)]" />
           <span className="hidden text-[17px] font-semibold tracking-[-0.02em] text-[var(--text)] min-[480px]:block">
-            剧说英语
-          </span>
+            {t("剧说英语")}</span>
         </HomeLink>
 
-        <nav className="flex h-16 shrink-0 items-stretch gap-0.5" aria-label="主导航">
+        <nav className="flex h-16 shrink-0 items-stretch gap-0.5" aria-label={t("主导航")}>
           {links.map((link) => {
             const active = link.href === '/'
               ? pathname === '/'
@@ -49,7 +50,7 @@ export default function Nav() {
                   active ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                 }`}
               >
-                {link.label}
+                {t(link.label)}
                 {active && (
                   <span className={`absolute inset-x-2.5 bottom-0 h-0.5 sm:inset-x-3.5 ${isLearn ? 'bg-[#e0a94a]' : 'bg-[#fd8c73]'}`} />
                 )}
@@ -60,11 +61,12 @@ export default function Nav() {
 
         <div className="ml-auto flex shrink-0 items-center gap-1 pl-1 sm:gap-2 sm:pl-0">
           <a
+            data-github-link
             href="https://github.com/3121597355/replay"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Star on GitHub，查看剧说英语开源仓库"
-            title="Star on GitHub · 剧说英语开源仓库"
+            aria-label={t("Star on GitHub，查看剧说英语开源仓库")}
+            title={t("Star on GitHub · 剧说英语开源仓库")}
             className="inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] sm:h-9 lg:px-3"
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -73,6 +75,7 @@ export default function Nav() {
             <span className="hidden whitespace-nowrap text-[13px] font-medium lg:inline">Star on GitHub</span>
           </a>
           <ThemeToggle />
+          <LanguageToggle />
           <NavAccount />
         </div>
       </div>

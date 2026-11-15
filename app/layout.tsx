@@ -6,6 +6,7 @@ import Analytics from '@/components/Analytics';
 import AccountProvider from '@/components/account/AccountProvider';
 import '@/components/account/account.css';
 import { siteName, siteUrl, siteDescription } from '@/lib/site';
+import LanguageProvider, { Text } from '@/components/LanguageProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
       </head>
       <body>
+        <LanguageProvider>
         <AccountProvider>
         <Nav />
         <main>{children}</main>
@@ -48,19 +50,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex max-w-[1120px] flex-col gap-5 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="flex items-center gap-2.5">
               <ReplayMark className="grid h-6 w-6 place-items-center rounded bg-[#1d873b]" />
-              <span className="text-[14px] font-semibold text-[var(--text)]">剧说英语</span>
-              <span className="text-[13px] text-[var(--text-faint)]">看剧练听力 · 跟读练口语</span>
+              <span className="text-[14px] font-semibold text-[var(--text)]"><Text text="剧说英语" /></span>
+              <span className="text-[13px] text-[var(--text-faint)]"><Text text="看剧练听力 · 跟读练口语" /></span>
             </div>
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[var(--text-dim)]">
-              <a href="/#catalog" className="hover:text-[var(--link)] hover:underline">浏览片单</a>
-              <a href="/learn" className="hover:text-[var(--link)] hover:underline">学习台</a>
-              <a href="/guides" className="hover:text-[var(--link)] hover:underline">学习指南</a>
-              <a href="/privacy" className="hover:text-[var(--link)] hover:underline">隐私说明</a>
-              <span className="text-[var(--text-faint)]">不提供片源与字幕</span>
+              <a href="/#catalog" className="hover:text-[var(--link)] hover:underline"><Text text="浏览片单" /></a>
+              <a href="/learn" className="hover:text-[var(--link)] hover:underline"><Text text="学习台" /></a>
+              <a href="/guides" className="hover:text-[var(--link)] hover:underline"><Text text="学习指南" /></a>
+              <a href="/privacy" className="hover:text-[var(--link)] hover:underline"><Text text="隐私说明" /></a>
+              <a href="https://github.com/3121597355/replay" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--link)] hover:underline">GitHub</a>
+              <span className="text-[var(--text-faint)]"><Text text="不提供片源与字幕" /></span>
             </div>
           </div>
         </footer>
         </AccountProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

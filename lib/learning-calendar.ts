@@ -8,8 +8,12 @@ export function learningLevel(seconds: number): number {
   return seconds < 300 ? 1 : seconds < 900 ? 2 : seconds < 1800 ? 3 : 4;
 }
 
-export function learningTime(seconds: number): string {
+export function learningTime(seconds: number, language: 'zh' | 'en' = 'zh'): string {
   const amount = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  if (language === 'en') {
+    const hours = Math.floor(amount / 3600), minutes = Math.floor(amount % 3600 / 60), remainder = amount % 60;
+    return hours ? `${hours}h${minutes ? ` ${minutes}m` : ''}` : minutes ? `${minutes}m${remainder ? ` ${remainder}s` : ''}` : `${amount}s`;
+  }
   if (!amount) return '0 分钟';
   if (amount < 60) return `${amount} 秒`;
   const hours = Math.floor(amount / 3600), minutes = Math.floor(amount % 3600 / 60), remainder = amount % 60;
@@ -17,7 +21,8 @@ export function learningTime(seconds: number): string {
   return `${minutes} 分钟${remainder ? ` ${remainder} 秒` : ''}`;
 }
 
-export function calendarDate(day: string): string {
+export function calendarDate(day: string, language: 'zh' | 'en' = 'zh'): string {
+  if (language === 'en') return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
   const [year, month, date] = day.split('-');
   return `${year}年${Number(month)}月${Number(date)}日`;
 }

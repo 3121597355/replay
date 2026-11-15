@@ -1,6 +1,9 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
+
 import { useEffect, useState } from 'react';
 export default function LearningActivity({ enabled, review = false }: { enabled: boolean; review?: boolean }) {
+  const { t } = useLanguage();
   const [expired, setExpired] = useState(false);
   useEffect(() => {
     if (!enabled) return;
@@ -40,5 +43,5 @@ export default function LearningActivity({ enabled, review = false }: { enabled:
     window.addEventListener('replay:learning-action', action); window.addEventListener('pointerdown', touch, { passive: true }); window.addEventListener('keydown', touch); window.addEventListener('pagehide', leave); document.addEventListener('visibilitychange', hide);
     return () => { clearInterval(timer); send(); window.removeEventListener('replay:learning-action', action); window.removeEventListener('pointerdown', touch); window.removeEventListener('keydown', touch); window.removeEventListener('pagehide', leave); document.removeEventListener('visibilitychange', hide); };
   }, [enabled, review]);
-  return expired ? <div className="account-inline-note" role="status">登录已过期，本地内容仍然保留。<a href="/login?returnTo=%2Flearn">重新登录，继续保存学习天数 →</a></div> : null;
+  return expired ? <div className="account-inline-note" role="status">{t("登录已过期，本地内容仍然保留。")}<a href="/login?returnTo=%2Flearn">{t("重新登录，继续保存学习天数 →")}</a></div> : null;
 }

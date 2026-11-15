@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
@@ -63,6 +64,7 @@ import { getStorageOwner } from '@/lib/account-storage';
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
 function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUser | null }) {
+  const { t } = useLanguage();
   const sampleOnly = trial;
   const params = useSearchParams();
   const fromSlug = params.get('from');
@@ -1117,8 +1119,6 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
     [cues]
   );
 
-  const title = sourceName ?? videoName ?? fromWork?.title ?? '学习台';
-
   return (
     <div
       data-page="learn"
@@ -1131,16 +1131,14 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
           <div className="learn-toolbar-title mr-1 min-w-0 max-w-full flex-[1_1_160px]">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="title-serif min-w-0 truncate text-[15px] font-semibold text-[var(--text)]">
-                {title}
+                {videoUrl === sample.video ? t('海边的曼彻斯特 · 维修对话.srt') : sourceName || videoName || (fromWork ? t(fromWork.title) : t('学习台'))}
               </h1>
               {cues.length > 0 && (
-                <span className="chip !py-0 !text-[10px]">
-                  {cues.length} 句 · {level}
-                </span>
+                <span className="chip !py-0 !text-[10px]">{t("{0} 句 · {1}", cues.length, level)}</span>
               )}
               <span
                 className="shrink-0 rounded border border-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] tnum text-[var(--text-faint)]"
-                title="构建时间。刷新后还是旧的就说明浏览器缓存没更新"
+                title={t("构建时间。刷新后还是旧的就说明浏览器缓存没更新")}
               >
                 {process.env.BUILD_STAMP}
               </span>
@@ -1148,11 +1146,11 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
           </div>
 
           <div data-tools-expanded={showToolbarTools} className="learn-toolbar-actions flex min-w-0 max-w-full flex-[1_1_640px] flex-wrap items-center gap-1.5 sm:justify-end">
-            <a href="/download" className="learn-secondary-action btn btn-ghost">下载视频</a>
+            <a href="/download" className="learn-secondary-action btn btn-ghost">{t("下载视频")}</a>
             {episodes && episodes.length > 0 && (
               <button
                 onClick={() => setShowPicker(true)}
-                title="选另一集"
+                title={t("选另一集")}
                 className="learn-secondary-action btn btn-ghost gap-1.5"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -1160,47 +1158,46 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   <rect x="3.5" y="15" width="17" height="4" rx="1.2" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M3.5 12h17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
-                选集
-                <span className="tnum text-[var(--text-dim)]">{episodes.length}</span>
+                {t("选集")}<span className="tnum text-[var(--text-dim)]">{episodes.length}</span>
               </button>
             )}
 
-            {sampleOnly ? <a className="btn btn-ghost" href={user ? '/learn' : '/signup?returnTo=%2Flearn'}>{user ? '回学习台导入' : '注册后导入素材'}</a> : <><FileBtn
-              label={videoName ? '换素材' : '导入视频 / 音频'}
+            {sampleOnly ? <a className="btn btn-ghost" href={user ? '/learn' : '/signup?returnTo=%2Flearn'}>{user ? t("回学习台导入") : t("注册后导入素材")}</a> : <><FileBtn
+              label={videoName ? t("换素材") : t("导入视频 / 音频")}
               accept={MEDIA_ACCEPT}
               onPick={onVideoFile}
               active={!!videoUrl}
             />
             <FileBtn
-              label="载字幕"
+              label={t("载字幕")}
               accept=".srt,.vtt,.ass,.ssa,text/plain"
               onPick={onSubFile}
               active={cues.length > 0 && !sourceName?.includes('演示')}
             /></>}
             {videoName && <button onClick={() => void clearCurrentLearning()}
-              title="清除浏览器保存的本次素材、字幕和进度，保留生词本与原文件"
-              className="learn-secondary-action btn btn-ghost">清除记录</button>}
+              title={t("清除浏览器保存的本次素材、字幕和进度，保留生词本与原文件")}
+              className="learn-secondary-action btn btn-ghost">{t("清除记录")}</button>}
             <button
               onClick={() => loadSample()}
               disabled={loadingSample}
-              title="《海边的曼彻斯特》维修对话 · 约 39 秒 · 配套 SRT"
+              title={t("《海边的曼彻斯特》维修对话 · 约 39 秒 · 配套 SRT")}
               className="btn btn-ghost disabled:opacity-35"
             >
-              {loadingSample ? '加载示例…' : '示例片段'}
+              {loadingSample ? t("加载示例…") : t("示例片段")}
             </button>
             <button
               onClick={() => handleExtract()}
               disabled={audioOnly || (!videoFile && videoUrl !== sample.video) || !!extractState || loadingSample}
               title={
-                audioOnly ? '音频请导入配套 SRT/VTT 字幕；抽字幕不提供语音识别' : videoUrl === sample.video ? '重新载入配套字幕' : videoFile
-                  ? '从视频里直接抽字幕轨，不需要单独的字幕文件'
-                  : '先选一个视频'
+                audioOnly ? t("音频请导入配套 SRT/VTT 字幕；抽字幕不提供语音识别") : videoUrl === sample.video ? t("重新载入配套字幕") : videoFile
+                  ? t("从视频里直接抽字幕轨，不需要单独的字幕文件")
+                  : t("先选一个视频")
               }
               className={`learn-secondary-action btn disabled:opacity-35 ${
                 videoFile && cues.length === 0 ? 'btn-gold' : 'btn-ghost'
               }`}
             >
-              {extractState ? '抽取中…' : videoUrl === sample.video ? '重载字幕' : '抽字幕'}
+              {extractState ? t("抽取中…") : videoUrl === sample.video ? t("重载字幕") : t("抽字幕")}
             </button>
 
             <span className="learn-secondary-action mx-1 h-4 w-px bg-[rgb(var(--fg-rgb)/0.10)]" />
@@ -1210,12 +1207,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               disabled={jobRunning || cues.length === 0 || pendingTrans === 0}
               title={
                 jobRunning
-                  ? `翻译在后台继续，切到别的页面也不会停（${job?.done ?? 0}/${job?.total ?? 0}）`
+                  ? t("翻译在后台继续，切到别的页面也不会停（{0}/{1}）", job?.done ?? 0, job?.total ?? 0)
                   : pendingTrans === 0 && cues.length > 0
-                    ? '每句都有中文了——字幕自带的或已翻译并缓存'
+                    ? t("每句都有中文了——字幕自带的或已翻译并缓存")
                     : cachedHits > 0
-                      ? `已有 ${cachedHits} 句缓存译文，只翻缺的 ${pendingTrans} 句`
-                      : '用你配的接口批量翻译缺中文的句子'
+                      ? t("已有 {0} 句缓存译文，只翻缺的 {1} 句", cachedHits, pendingTrans)
+                      : t("用你配的接口批量翻译缺中文的句子")
               }
               className={`learn-secondary-action btn gap-1.5 disabled:opacity-40 ${
                 jobRunning ? 'btn-gold' : 'btn-ghost'
@@ -1230,28 +1227,25 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   {job?.done ?? 0}/{job?.total ?? 0}
                 </span>
               ) : pendingTrans === 0 && cues.length > 0 ? (
-                '已译完'
+                t("已译完")
               ) : (
-                '翻译'
+                t("翻译")
               )}
               {!jobRunning && pendingTrans > 0 && cachedHits > 0 && (
-                <span className="rounded bg-emerald-400/15 px-1 text-[10px] tnum text-emerald-400/80">
-                  {cachedHits} 缓存
-                </span>
+                <span className="rounded bg-emerald-400/15 px-1 text-[10px] tnum text-emerald-400/80">{t("{0} 缓存", cachedHits)}</span>
               )}
             </button>
 
             <button
               onClick={() => setShowExport(true)}
               disabled={cues.length === 0}
-              title="导出 Anki 卡片，或者带译文的时间轴"
+              title={t("导出 Anki 卡片，或者带译文的时间轴")}
               className="learn-secondary-action btn btn-ghost gap-1.5 disabled:opacity-40"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 4v10m0 0 3.5-3.5M12 14 8.5 10.5M4 16.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              导出
-            </button>
+              {t("导出")}</button>
 
             <button
               onClick={() => setShowSaved((v) => !v)}
@@ -1262,13 +1256,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8L12 3.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
               </svg>
-              生词本
-              {saved.length > 0 && <span className="tnum opacity-70">{saved.length}</span>}
+              {t("生词本")}{saved.length > 0 && <span className="tnum opacity-70">{saved.length}</span>}
             </button>
             <button
               onClick={() => setShowSettings(true)}
               className="learn-secondary-action grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.20)] hover:text-[var(--text-soft)]"
-              title="翻译设置"
+              title={t("翻译设置")}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
@@ -1276,7 +1269,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               </svg>
             </button>
             <button type="button" className="learn-toolbar-more btn btn-ghost" aria-expanded={showToolbarTools} onClick={() => setShowToolbarTools(value => !value)}>
-              {showToolbarTools ? '收起工具' : '更多工具'}
+              {showToolbarTools ? t("收起工具") : t("更多工具")}
             </button>
           </div>
         </div>
@@ -1284,24 +1277,24 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
       {downloadImportError && (
         <div role="alert" className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
-          <span>{downloadImportError}</span><a href="/download" className="btn btn-ghost shrink-0">重新导入</a>
+          <span>{t(downloadImportError)}</span><a href="/download" className="btn btn-ghost shrink-0">{t("重新导入")}</a>
         </div>
       )}
       {(sessionLoading || sessionNotice || missingSession) && (
         <div role="status" className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-2 text-[12px] text-[var(--text-dim)]">
-          <span>{sessionLoading ? '正在恢复上次的学习…' : sessionNotice}</span>
-          {missingSession && <FileBtn label="选择原素材继续" accept={MEDIA_ACCEPT} onPick={onVideoFile} />}
+          <span>{sessionLoading ? t("正在恢复上次的学习…") : t(sessionNotice || '')}</span>
+          {missingSession && <FileBtn label={t("选择原素材继续")} accept={MEDIA_ACCEPT} onPick={onVideoFile} />}
         </div>
       )}
       {(loadingSample || sampleError) && (
         <div role={sampleError ? 'alert' : 'status'} className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 text-[13px]">
-          <span>{sampleError ?? '正在加载配套字幕，视频将边加载边播放…'}</span>
+          <span>{sampleError ? t(sampleError) : t("正在加载配套字幕，视频将边加载边播放…")}</span>
           <button className="btn btn-ghost shrink-0 !text-[12px]" onClick={() => {
             if (loadingSample) {
               sampleRequestRef.current?.abort();
               setLoadingSample(false);
             } else void loadSample();
-          }}>{loadingSample ? '取消' : '重试'}</button>
+          }}>{loadingSample ? t("取消") : t("重试")}</button>
         </div>
       )}
 
@@ -1310,21 +1303,20 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
         <div className="border-b border-[rgb(var(--fg-rgb)/0.06)] bg-[var(--learn-bar)] px-4 py-2 backdrop-blur">
           <div className="mx-auto flex min-w-0 max-w-[1600px] flex-wrap items-center gap-3">
             <span className="min-w-0 text-[11.5px] text-[var(--text-dim)]">
-              {extractState.stage === 'scanning' && '读取容器…'}
+              {extractState.stage === 'scanning' && t("读取容器…")}
               {extractState.stage === 'loading' &&
                 (extractState.pct >= 100
-                  ? '启动解码引擎…'
-                  : '下载解码引擎（首次约 31MB，之后走浏览器缓存）')}
-              {extractState.stage === 'probing' && '读取视频流信息…'}
-              {extractState.stage === 'extracting' && '抽字幕并转 srt…'}
-              {extractState.stage === 'done' && '完成'}
+                  ? t("启动解码引擎…")
+                  : t("下载解码引擎（首次约 31MB，之后走浏览器缓存）"))}
+              {extractState.stage === 'probing' && t("读取视频流信息…")}
+              {extractState.stage === 'extracting' && t("抽字幕并转 srt…")}
+              {extractState.stage === 'done' && t("完成")}
             </span>
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-[rgb(var(--fg-rgb)/0.08)]">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-300"
                 style={{
-                  width: `${
-                    extractState.stage === 'scanning'
+                  width: `${extractState.stage === 'scanning'
                       ? Math.max(4, extractState.pct)
                       : extractState.stage === 'loading'
                         // 下载占前 70%，剩下的留给启动和抽取，避免 100% 之后又往回掉
@@ -1333,8 +1325,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                           ? 78
                           : extractState.stage === 'extracting'
                             ? 90
-                            : 100
-                  }%`,
+                            : 100}%`,
                 }}
               />
             </div>
@@ -1354,7 +1345,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
           <div className={`learn-stage relative flex min-w-0 items-center justify-center bg-[var(--stage)] p-3 ${videoUrl ? 'learn-stage-video' : ''} ${audioOnly ? 'learn-stage-audio' : ''}`}>
             {videoUrl ? (
               <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-black shadow-card ${audioOnly ? 'learn-audio-player' : ''}`}>
-                {audioOnly && <div className="learn-audio-cover"><span aria-hidden="true">♫</span><p>播客 · 新闻 · 音频精听</p><h2>{videoName}</h2><p>导入配套字幕，即可逐句循环、查词和录音跟读。</p></div>}
+                {audioOnly && <div className="learn-audio-cover"><span aria-hidden="true">♫</span><p>{t("播客 · 新闻 · 音频精听")}</p><h2>{videoName}</h2><p>{t("导入配套字幕，即可逐句循环、查词和录音跟读。")}</p></div>}
                 <Player
                   key={videoUrl}
                   ref={attachPlayer}
@@ -1398,7 +1389,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                 {resume && (
                   <div className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-gold-500/30 bg-black/85 px-3 py-1.5 text-white shadow-lg backdrop-blur-sm">
                     <span className="text-[11.5px] text-[var(--text-soft)]">
-                      上次看到 <span className="tnum text-[#e0a94a]">{fmtTime(resume.time)}</span>
+                      {t("上次看到")}<span className="tnum text-[#e0a94a]">{fmtTime(resume.time)}</span>
                     </span>
                     <button
                       onClick={() => {
@@ -1410,18 +1401,16 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                       }}
                       className="rounded-md bg-gold-500 px-2 py-0.5 text-[11px] font-medium text-black/85 transition-opacity hover:opacity-90"
                     >
-                      接着看
-                    </button>
+                      {t("接着看")}</button>
                     <button
                       onClick={() => {
                         if (subHash) clearProgress(subHash);
                         setResume(null);
                       }}
                       className="rounded-md px-1.5 py-0.5 text-[11px] text-[var(--text-dim)] transition-colors hover:text-[var(--text-soft)]"
-                      title="清掉这条记录，从头开始"
+                      title={t("清掉这条记录，从头开始")}
                     >
-                      从头
-                    </button>
+                      {t("从头")}</button>
                   </div>
                 )}
 
@@ -1458,25 +1447,25 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
 
           {videoUrl && videoStatus !== 'ready' && (
             <div role={videoStatus === 'error' ? 'alert' : 'status'} className="flex items-center justify-between gap-2 px-4 py-2 text-[12px] text-[var(--text-dim)]">
-              <span>{videoError ?? '素材正在缓冲，加载后点击播放。'}</span>
+              <span>{videoError ? t(videoError) : t("素材正在缓冲，加载后点击播放。")}</span>
               {videoStatus === 'error' && <button className="btn btn-ghost shrink-0 !text-[12px]" onClick={() => {
                 setVideoError(undefined);
                 setVideoStatus('loading');
                 videoRef.current?.load();
-              }}>重试播放</button>}
+              }}>{t("重试播放")}</button>}
             </div>
           )}
 
           {/* 控制条 */}
           <div className="learn-controls min-w-0 shrink-0 border-t border-[rgb(var(--fg-rgb)/0.06)] px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              <Ctrl onClick={() => go(-1)} disabled={!videoUrl || cues.length === 0} title="上一句 (↑)">
+              <Ctrl onClick={() => go(-1)} disabled={!videoUrl || cues.length === 0} title={t("上一句 (↑)")}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M18 6 8 12l10 6V6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
                   <path d="M5 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                 </svg>
               </Ctrl>
-              <Ctrl onClick={togglePlay} disabled={!videoUrl} title="播放/暂停 (空格)" primary>
+              <Ctrl onClick={togglePlay} disabled={!videoUrl} title={t("播放/暂停 (空格)")} primary>
                 {playing ? (
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                     <rect x="6" y="5" width="4" height="14" rx="1" />
@@ -1488,13 +1477,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   </svg>
                 )}
               </Ctrl>
-              <Ctrl onClick={() => go(1)} disabled={!videoUrl || cues.length === 0} title="下一句 (↓)">
+              <Ctrl onClick={() => go(1)} disabled={!videoUrl || cues.length === 0} title={t("下一句 (↓)")}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M6 6l10 6-10 6V6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
                   <path d="M19 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                 </svg>
               </Ctrl>
-              <Ctrl onClick={replay} disabled={!videoUrl || selected < 0} title="重播本句 (R)">
+              <Ctrl onClick={replay} disabled={!videoUrl || selected < 0} title={t("重播本句 (R)")}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M4 12a8 8 0 1 1 2.3 5.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                   <path d="M4 12V7m0 5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -1508,15 +1497,14 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                     ? 'border-gold-500/35 bg-gold-500/10 text-[var(--gold-ink)]'
                     : 'border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)] hover:text-[var(--text-soft)]'
                 }`}
-                title="单句循环 (L)"
+                title={t("单句循环 (L)")}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <path d="M17 2l4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                单句循环
-              </button>
+                {t("单句循环")}</button>
 
               <div className="flex max-w-full flex-wrap items-center gap-0.5 rounded-lg border border-[rgb(var(--fg-rgb)/0.10)] p-0.5">
                 {RATES.map((r) => (
@@ -1542,8 +1530,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                     : 'border-[rgb(var(--fg-rgb)/0.10)] text-[var(--text-dim)]'
                 }`}
               >
-                译文
-              </button>
+                {t("译文")}</button>
 
               <div className="ml-auto flex min-w-0 flex-wrap items-center gap-3 text-[11px] text-[var(--text-faint)] tnum">
                 {current >= 0 && cues[current] && (
@@ -1552,8 +1539,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   </span>
                 )}
                 <span className="hidden xl:inline">
-                  空格 播放 · ↑↓ 切换 · R 重播 · L 循环
-                </span>
+                  {t("空格 播放 · ↑↓ 切换 · R 重播 · L 循环")}</span>
               </div>
             </div>
             <SpeakingPractice key={videoUrl || 'empty'} cue={cues[selected >= 0 ? selected : 0]} cueNumber={(selected >= 0 ? selected : 0) + 1} onListen={listenSpeakingCue} onPause={() => { speakingEndRef.current = undefined; videoRef.current?.pause(); }} />
@@ -1564,15 +1550,11 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
         <aside className="learn-subtitles flex w-full min-w-0 shrink-0 flex-col lg:w-[40%] lg:max-w-[520px]">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-[rgb(var(--fg-rgb)/0.06)] px-4 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] tracking-[0.18em] text-[var(--text-faint)]">字幕</span>
+              <span className="text-[11px] tracking-[0.18em] text-[var(--text-faint)]">{t("字幕")}</span>
               {translatedCount > 0 ? (
-                <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] text-emerald-400/70 tnum">
-                  已译 {translatedCount}/{cues.length}
-                </span>
+                <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] text-emerald-400/70 tnum">{t("已译 {0}/{1}", translatedCount, cues.length)}</span>
               ) : bilingualCount > 0 ? (
-                <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] text-emerald-400/70">
-                  双语 {bilingualCount}/{cues.length}
-                </span>
+                <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-[10px] text-emerald-400/70">{t("双语 {0}/{1}", bilingualCount, cues.length)}</span>
               ) : null}
             </div>
 
@@ -1585,12 +1567,11 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                     <path d="M12 4v14m0 0 6-6m-6 6-6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  回到第 {current + 1} 句
-                </button>
+                  {t("回到第")}{current + 1} {t("句")}</button>
               )}
               {sourceName && (
                 <span className="max-w-[180px] truncate text-[10.5px] text-[var(--text-faint)]">
-                  {sourceName}
+                  {videoUrl === sample.video ? t('海边的曼彻斯特 · 维修对话.srt') : sourceName}
                 </span>
               )}
             </div>
@@ -1697,7 +1678,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                           saveCue(c);
                         }}
                         className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                        title="加入生词本"
+                        title={t("加入生词本")}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[var(--text-faint)] hover:text-[var(--gold-ink)]">
                           <path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.2L12 17.2 6.4 20.1l1.2-6.2L3 9.6l6.3-.8L12 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
@@ -1726,14 +1707,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             <div className="drawer-panel relative z-10 flex h-full w-full max-w-md flex-col border-l border-[rgb(var(--fg-rgb)/0.10)] bg-[var(--learn-panel)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[rgb(var(--fg-rgb)/0.08)] px-5 py-4">
                 <div>
-                  <h2 className="title-serif text-[17px] text-[var(--text)]">生词本</h2>
-                  <p className="mt-0.5 text-[11px] text-[var(--text-faint)]">
-                    已收集 {saved.length} 条 · 导出后可直接导入 Anki
-                  </p>
+                  <h2 className="title-serif text-[17px] text-[var(--text)]">{t("生词本")}</h2>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-faint)]">{t("已收集 {0} 条 · 导出后可直接导入 Anki", saved.length)}</p>
                 </div>
                 <button
                   onClick={() => setShowSaved(false)}
-                  title="关闭 (Esc)"
+                  title={t("关闭 (Esc)")}
                   className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-dim)] transition-colors hover:bg-[rgb(var(--fg-rgb)/0.08)] hover:text-[var(--text)]"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -1750,10 +1729,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                         <path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.2L12 17.2 6.4 20.1l1.2-6.2L3 9.6l6.3-.8L12 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <p className="text-[13px] text-[var(--text-dim)]">还没收藏句子</p>
+                    <p className="text-[13px] text-[var(--text-dim)]">{t("还没收藏句子")}</p>
                     <p className="max-w-[240px] text-[11.5px] leading-relaxed text-[var(--text-faint)]">
-                      把鼠标移到任意一句字幕上，点右侧的星标就能收进来
-                    </p>
+                      {t("把鼠标移到任意一句字幕上，点右侧的星标就能收进来")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1773,11 +1751,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   disabled={saved.length === 0}
                   className="btn btn-gold w-full disabled:opacity-30"
                 >
-                  导出为 Anki 卡片
-                </button>
+                  {t("导出为 Anki 卡片")}</button>
                 <p className="mt-2 text-center text-[10.5px] leading-relaxed text-[var(--text-faint)]">
-                  Anki → 导入 → 选 CSV → 分隔符逗号 → 勾选「允许 HTML」
-                </p>
+                  {t("Anki → 导入 → 选 CSV → 分隔符逗号 → 勾选「允许 HTML」")}</p>
               </div>
             </div>
           </div>,
@@ -1797,18 +1773,16 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             <div className="modal-panel relative z-10 flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[var(--learn-panel)] shadow-2xl">
               <div className="flex shrink-0 items-baseline justify-between border-b border-[rgb(var(--fg-rgb)/0.08)] px-6 py-4">
                 <div>
-                  <h2 className="title-serif text-[19px] text-[var(--text)]">选一集</h2>
+                  <h2 className="title-serif text-[19px] text-[var(--text)]">{t("选一集")}</h2>
                   <p className="mt-1 text-[11.5px] text-[var(--text-faint)]">
-                    扫到 {episodes.length} 组 ·{' '}
-                    {episodes.filter((e) => e.video && e.best).length} 组视频字幕都齐
-                  </p>
+                    {t("扫到")}{episodes.length} {t("组 ·")}{' '}
+                    {episodes.filter((e) => e.video && e.best).length} {t("组视频字幕都齐")}</p>
                 </div>
                 <button
                   onClick={() => setShowPicker(false)}
                   className="text-[12px] text-[var(--text-dim)] hover:text-[var(--text-soft)]"
                 >
-                  关闭
-                </button>
+                  {t("关闭")}</button>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2">
@@ -1851,10 +1825,10 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                                   {ep.bestLang && ep.bestLang !== 'unknown' && (
                                     <span className="ml-1.5 rounded bg-[rgb(var(--fg-rgb)/0.08)] px-1 text-[9.5px] text-[var(--text-dim)]">
                                       {ep.bestLang === 'bilingual'
-                                        ? '双语'
+                                        ? t("双语")
                                         : ep.bestLang === 'zh'
-                                          ? '中文'
-                                          : '英文'}
+                                          ? t("中文")
+                                          : t("英文")}
                                     </span>
                                   )}
                                   {ep.subtitles.length > 1 && (
@@ -1864,11 +1838,11 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                                   )}
                                 </>
                               ) : (
-                                <span className="text-amber-400/60">没有字幕文件</span>
+                                <span className="text-amber-400/60">{t("没有字幕文件")}</span>
                               )}
                             </>
                           ) : (
-                            '只有字幕，没有视频'
+                            t("只有字幕，没有视频")
                           )}
                         </span>
                       </span>
@@ -1878,8 +1852,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               </div>
 
               <div className="shrink-0 border-t border-[rgb(var(--fg-rgb)/0.08)] px-6 py-3 text-[11px] text-[var(--text-faint)]">
-                点某一集就加载它的视频和字幕。视频在本机读取，不上传。
-              </div>
+                {t("点某一集就加载它的视频和字幕。视频在本机读取，不上传。")}</div>
             </div>
           </div>,
           document.body
@@ -1895,10 +1868,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               onClick={() => setShowExport(false)}
             />
             <div className="modal-panel relative z-10 w-full max-w-md rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[var(--learn-panel)] p-6 shadow-2xl">
-              <h2 className="title-serif text-[19px] text-[var(--text)]">导出</h2>
+              <h2 className="title-serif text-[19px] text-[var(--text)]">{t("导出")}</h2>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--text-dim)]">
-                当前 {cues.length} 条字幕
-                {translatedCount > 0 && ` · ${translatedCount} 条有译文`}。
+                {t("当前")}{cues.length} {t("条字幕")}{translatedCount > 0 && t(" · {0} 条有译文", translatedCount)}。
               </p>
 
               <div className="mt-5 space-y-2.5">
@@ -1912,10 +1884,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   }}
                   className="group w-full rounded-xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.02)] p-3.5 text-left transition-colors hover:border-gold-500/35 hover:bg-gold-500/[0.05]"
                 >
-                  <div className="text-[13px] font-medium text-[var(--text)]">Anki 卡片</div>
+                  <div className="text-[13px] font-medium text-[var(--text)]">{t("Anki 卡片")}</div>
                   <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-dim)]">
-                    每句一张卡，正面英文、背面译文和重点词。CSV 格式。
-                  </div>
+                    {t("每句一张卡，正面英文、背面译文和重点词。CSV 格式。")}</div>
                 </button>
 
                 {/* 双语字幕 */}
@@ -1934,14 +1905,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   className="group w-full rounded-xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.02)] p-3.5 text-left transition-colors hover:border-gold-500/35 hover:bg-gold-500/[0.05]"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-[var(--text)]">带译文的时间轴</span>
+                    <span className="text-[13px] font-medium text-[var(--text)]">{t("带译文的时间轴")}</span>
                     <span className="rounded bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-dim)]">
                       SRT
                     </span>
                   </div>
                   <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-dim)]">
-                    原文在上、中文在下。播放器、剪辑软件、其它学习工具都能直接用。
-                  </div>
+                    {t("原文在上、中文在下。播放器、剪辑软件、其它学习工具都能直接用。")}</div>
                 </button>
 
                 {/* VTT */}
@@ -1956,21 +1926,19 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   className="group w-full rounded-xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.02)] p-3.5 text-left transition-colors hover:border-gold-500/35 hover:bg-gold-500/[0.05]"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-[var(--text)]">网页字幕</span>
+                    <span className="text-[13px] font-medium text-[var(--text)]">{t("网页字幕")}</span>
                     <span className="rounded bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-dim)]">
                       VTT
                     </span>
                   </div>
                   <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-dim)]">
-                    给 HTML5 `&lt;track&gt;` 用的格式，做网页播放器时用得上。
-                  </div>
+                    {t("给 HTML5 `&lt;track&gt;` 用的格式，做网页播放器时用得上。")}</div>
                 </button>
               </div>
 
               <div className="mt-5 flex justify-end">
                 <button onClick={() => setShowExport(false)} className="btn btn-ghost">
-                  取消
-                </button>
+                  {t("取消")}</button>
               </div>
             </div>
           </div>,
@@ -1984,13 +1952,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
           <div className="fixed inset-0 z-[70] grid place-items-center p-4">
           <div className="modal-overlay absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
           <div className="modal-panel relative z-10 w-full max-w-lg rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[var(--learn-panel)] p-6 shadow-2xl">
-            <h2 className="title-serif text-[19px] text-[var(--text)]">翻译设置</h2>
+            <h2 className="title-serif text-[19px] text-[var(--text)]">{t("翻译设置")}</h2>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--text-dim)]">
-              填一个 OpenAI 兼容接口的 Key，字幕会批量翻译。Key 只存在你浏览器的 localStorage，不会发送到任何第三方服务器（除了你自己填的接口）。
-            </p>
+              {t("填一个 OpenAI 兼容接口的 Key，字幕会批量翻译。Key 只存在你浏览器的 localStorage，不会发送到任何第三方服务器（除了你自己填的接口）。")}</p>
 
             <div className="mt-5 space-y-3">
-              <Field label="接口地址 Base URL">
+              <Field label={t("接口地址 Base URL")}>
                 <input
                   value={cfg.baseUrl}
                   onChange={(e) => setCfg({ ...cfg, baseUrl: e.target.value })}
@@ -1998,7 +1965,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   className="input"
                 />
               </Field>
-              <Field label="模型">
+              <Field label={t("模型")}>
                 <input
                   value={cfg.model}
                   onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
@@ -2030,11 +1997,9 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                 }}
                 className="rounded-lg border border-[rgb(var(--fg-rgb)/0.12)] px-2.5 py-1.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgb(var(--fg-rgb)/0.25)] hover:text-[var(--text)]"
               >
-                测试连接
-              </button>
+                {t("测试连接")}</button>
               <span className="text-[11px] text-[var(--text-faint)]">
-                只发一条 8 token 的小请求，确认地址和 Key 能用
-              </span>
+                {t("只发一条 8 token 的小请求，确认地址和 Key 能用")}</span>
             </div>
 
             {testResult && (
@@ -2049,19 +2014,17 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               >
                 <div className="mb-0.5 font-medium">
                   {testResult.pending
-                    ? '测试中'
+                    ? t("测试中")
                     : testResult.ok
-                      ? '✓ 连接正常'
-                      : '✗ 连接失败'}
+                      ? t("✓ 连接正常")
+                      : t("✗ 连接失败")}
                 </div>
                 <div className="select-all break-all font-mono text-[11px] opacity-90">
-                  {testResult.msg}
+                  {t(testResult.msg || '')}
                 </div>
                 {!testResult.pending && !testResult.ok && (
                   <div className="mt-1.5 text-[11px] opacity-60">
-                    可以选中复制这段错误去搜。401 多半是 Key 无效，404 是地址写错，
-                    Failed to fetch 是本机网络问题。
-                  </div>
+                    {t("可以选中复制这段错误去搜。401 多半是 Key 无效，404 是地址写错， Failed to fetch 是本机网络问题。")}</div>
                 )}
               </div>
             )}
@@ -2070,11 +2033,11 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             <div className="mt-5 rounded-xl border border-[rgb(var(--fg-rgb)/0.08)] bg-[rgb(var(--fg-rgb)/0.02)] px-3.5 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[12px] text-[var(--text-soft)]">翻译缓存</div>
+                  <div className="text-[12px] text-[var(--text-soft)]">{t("翻译缓存")}</div>
                   <div className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-faint)]">
                     {cacheInfo.count > 0
-                      ? `已存 ${cacheInfo.count} 部 · 约 ${(cacheInfo.bytes / 1024 / 1024).toFixed(1)} MB。同一份字幕再导入会直接套用，不再请求。`
-                      : '还没有缓存。翻译完会自动存，下次导入同一份字幕不用再翻。'}
+                      ? t("已存 {0} 部 · 约 {1} MB。同一份字幕再导入会直接套用，不再请求。", cacheInfo.count, (cacheInfo.bytes / 1024 / 1024).toFixed(1))
+                      : t("还没有缓存。翻译完会自动存，下次导入同一份字幕不用再翻。")}
                   </div>
                 </div>
                 <button
@@ -2087,15 +2050,13 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                   disabled={cacheInfo.count === 0}
                   className="btn btn-ghost shrink-0 !px-2.5 !py-1.5 !text-[11.5px] disabled:opacity-30"
                 >
-                  清空
-                </button>
+                  {t("清空")}</button>
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
               <button onClick={() => setShowSettings(false)} className="btn btn-ghost">
-                取消
-              </button>
+                {t("取消")}</button>
               <button
                 onClick={() => {
                   const persisted = saveConfig(cfg);
@@ -2104,8 +2065,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                 }}
                 className="btn btn-gold"
               >
-                保存
-              </button>
+                {t("保存")}</button>
             </div>
           </div>
           </div>,
@@ -2123,30 +2083,25 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
             onClick={() => setTracks(null)}
           />
           <div className="modal-panel relative z-10 w-full max-w-md rounded-2xl border border-[rgb(var(--fg-rgb)/0.10)] bg-[var(--learn-panel)] p-6 shadow-2xl">
-            <h2 className="title-serif text-[19px] text-[var(--text)]">
-              发现 {tracks.length} 条字幕轨
-            </h2>
+            <h2 className="title-serif text-[19px] text-[var(--text)]">{t("发现 {0} 条字幕轨", tracks.length)}</h2>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--text-dim)]">
-              选一条抽出来。一般选你听得懂的语言对照着学，效果最好。
-            </p>
+              {t("选一条抽出来。一般选你听得懂的语言对照着学，效果最好。")}</p>
             <div className="mt-4 space-y-2">
-              {tracks.map((t) => (
+              {tracks.map((track) => (
                 <button
-                  key={t.trackIndex}
-                  onClick={() => pickTrack(t)}
+                  key={track.trackIndex}
+                  onClick={() => pickTrack(track)}
                   className="group flex w-full items-center justify-between rounded-xl border border-[rgb(var(--fg-rgb)/0.08)] bg-[rgb(var(--fg-rgb)/0.03)] px-4 py-3 text-left transition-colors hover:border-gold-500/35 hover:bg-gold-500/[0.06]"
                 >
                   <span className="flex items-center gap-3">
                     <span className="grid h-7 w-7 place-items-center rounded-md border border-[rgb(var(--fg-rgb)/0.10)] text-[10px] tnum text-[var(--text-dim)]">
-                      {String(t.trackIndex + 1).padStart(2, '0')}
+                      {String(track.trackIndex + 1).padStart(2, '0')}
                     </span>
                     <span>
                       <span className="block text-[13px] text-[var(--text)]">
-                        {trackLabel(t)}
+                        {trackLabel(track)}
                       </span>
-                      <span className="block text-[10.5px] text-[var(--text-faint)]">
-                        流 #{t.streamIndex}
-                      </span>
+                      <span className="block text-[10.5px] text-[var(--text-faint)]">{t("流 #{0}", track.streamIndex)}</span>
                     </span>
                   </span>
                   <svg
@@ -2171,8 +2126,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               onClick={() => setTracks(null)}
               className="mt-4 w-full text-[12px] text-[var(--text-faint)] hover:text-[var(--text-soft)]"
             >
-              取消
-            </button>
+              {t("取消")}</button>
           </div>
           </div>,
           document.body
@@ -2200,19 +2154,15 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
               </svg>
             </div>
             <h2 className="title-serif text-[19px] text-[var(--text)]">
-              这个视频里没有字幕轨
-            </h2>
+              {t("这个视频里没有字幕轨")}</h2>
             <p className="mt-2 text-[12.5px] leading-relaxed text-[var(--text-dim)]">
-              能读的流：只有画面和声音。字幕要么被「烧」进了画面（硬字幕），
-              要么片源本来就没带。
-              <span className="text-[var(--text-dim)]">
-                mp4 和 mkv 我都能抽——只要里面真有字幕轨；mp4 里九成是烧死的。
-              </span>
+              {t("能读的流：只有画面和声音。字幕要么被「烧」进了画面（硬字幕）， 要么片源本来就没带。")}<span className="text-[var(--text-dim)]">
+                {t("mp4 和 mkv 我都能抽——只要里面真有字幕轨；mp4 里九成是烧死的。")}</span>
             </p>
 
             <div className="mt-5 space-y-2.5">
-              <Route n="1" title="找一个 srt 文件传进来" desc="字幕站基本都有，对一下片长和帧率就行——这条最快" />
-              <Route n="2" title="其实不用换片源" desc="mp4 也能抽软字幕（mov_text）。换片源只在原片本来就没字幕时才有意义" />
+              <Route n="1" title={t("找一个 srt 文件传进来")} desc={t("字幕站基本都有，对一下片长和帧率就行——这条最快")} />
+              <Route n="2" title={t("其实不用换片源")} desc={t("mp4 也能抽软字幕（mov_text）。换片源只在原片本来就没字幕时才有意义")} />
             </div>
 
             <div className="mt-6 flex items-center gap-2">
@@ -2226,14 +2176,12 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
                     setNoTrack(false);
                   }}
                 />
-                传一个 srt
-              </label>
+                {t("传一个 srt")}</label>
               <button
                 onClick={() => setNoTrack(false)}
                 className="ml-auto text-[12px] text-[var(--text-faint)] hover:text-[var(--text-soft)]"
               >
-                关闭
-              </button>
+                {t("关闭")}</button>
             </div>
           </div>
           </div>,
@@ -2244,7 +2192,7 @@ function LearnInner({ trial = false, user }: { trial?: boolean; user?: AccountUs
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 animate-fade-up">
           <div className="rounded-full border border-[rgb(var(--fg-rgb)/0.12)] bg-[var(--learn-toast)] px-4 py-2 text-[12.5px] text-[var(--text)] shadow-2xl backdrop-blur">
-            {toast}
+            {t(toast)}
           </div>
         </div>
       )}
@@ -2371,6 +2319,7 @@ function EmptyVideo({
   hasCues: boolean;
   workTitle?: string;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="learn-empty flex w-full min-w-0 flex-col items-center justify-center gap-4 rounded-2xl border border-[rgb(var(--fg-rgb)/0.06)] bg-gradient-to-b from-[rgb(var(--fg-rgb)/0.03)] via-transparent to-transparent p-4 text-center sm:gap-6 sm:p-6">
       <div className="learn-empty-icon relative">
@@ -2385,12 +2334,9 @@ function EmptyVideo({
 
       <div className="learn-empty-heading">
         <h3 className="title-serif text-[20px] text-[var(--text)]">
-          {workTitle ? `打开《${workTitle}》的副本` : '选一段自己的视频或音频'}
+          {workTitle ? t("打开《{0}》的副本", workTitle) : t("选一段自己的视频或音频")}
         </h3>
-        <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-relaxed text-[var(--text-dim)]">
-          文件在你的浏览器里播放，不会上传到任何服务器。
-          {hasCues ? ' 字幕已就绪，请选配套的视频或音频。' : ' 电影、美剧、播客、新闻都可以；逐句学习需配套字幕。'}
-        </p>
+        <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-relaxed text-[var(--text-dim)]">{t("文件在你的浏览器里播放，不会上传到任何服务器。 {0}", hasCues ? t(' 字幕已就绪，请选配套的视频或音频。') : t(' 电影、美剧、播客、新闻都可以；逐句学习需配套字幕。'))}</p>
       </div>
 
       <div className="learn-empty-actions flex flex-wrap items-center justify-center gap-2">
@@ -2401,24 +2347,22 @@ function EmptyVideo({
             className="hidden"
             onChange={(e) => onVideo(e.target.files?.[0])}
           />
-          选择视频 / 音频
-        </label>
+          {t("选择视频 / 音频")}</label>
         {canFolder && (
           <button
             onClick={onFolder}
             disabled={scanning !== null}
-            title="选一个剧集文件夹，自动把视频和字幕配成对"
+            title={t("选一个剧集文件夹，自动把视频和字幕配成对")}
             className="btn btn-ghost disabled:opacity-50"
           >
             {scanning !== null ? (
-              <span className="tnum">扫描中 {scanning} 个…</span>
+              <span className="tnum">{t("扫描中 {0} 个…", scanning)}</span>
             ) : (
               <>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="mr-1">
                   <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l1.8 2H19a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 19 18H4.5A1.5 1.5 0 0 1 3 16.5v-9Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
                 </svg>
-                选整个文件夹
-              </>
+                {t("选整个文件夹")}</>
             )}
           </button>
         )}
@@ -2426,16 +2370,15 @@ function EmptyVideo({
 
       {canFolder && (
         <p className="learn-empty-folder-note -mt-2 text-[11px] text-[var(--text-faint)]">
-          整个文件夹选进来，会把 S01E01.mkv、S01E01.简体&amp;英文.srt 自动配成一对
-        </p>
+          {t("整个文件夹选进来，会把 S01E01.mkv、S01E01.简体&amp;英文.srt 自动配成一对")}</p>
       )}
 
       {/* 三步走 */}
       <div className="learn-empty-steps mt-2 grid w-full max-w-lg grid-cols-3 gap-2">
         {[
-          { n: '01', t: '选视频', d: '本地文件，不上传' },
-          { n: '02', t: '抽字幕', d: '自动抽，或传 .srt' },
-          { n: '03', t: '逐句精听', d: '循环 + 收藏' },
+          { n: '01', t: t("选视频"), d: t("本地文件，不上传") },
+          { n: '02', t: t("抽字幕"), d: t("自动抽，或传 .srt") },
+          { n: '03', t: t("逐句精听"), d: t("循环 + 收藏") },
         ].map((s) => (
           <div key={s.n} className="rounded-lg border border-[rgb(var(--fg-rgb)/0.08)] bg-[rgb(var(--fg-rgb)/0.02)] px-3 py-2.5 text-left">
             <div className="tnum text-[10px] text-[var(--gold-ink)]">{s.n}</div>
@@ -2450,26 +2393,21 @@ function EmptyVideo({
         disabled={loadingSample}
         className="text-[11px] text-[var(--text-faint)] underline decoration-white/15 underline-offset-4 transition-colors hover:text-[var(--gold-ink)]"
       >
-        没有片源？试学《海边的曼彻斯特》维修片段
-      </button>
+        {t("没有片源？试学《海边的曼彻斯特》维修片段")}</button>
 
       <div className="learn-empty-shortcuts flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1.5 text-[10.5px] text-[var(--text-faint)]">
         <span className="flex items-center gap-1.5">
-          <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">空格</kbd>
-          播放
-        </span>
+          <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">{t("空格")}</kbd>
+          {t("播放")}</span>
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">↑↓</kbd>
-          切换
-        </span>
+          {t("切换")}</span>
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">R</kbd>
-          重播
-        </span>
+          {t("重播")}</span>
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-[rgb(var(--fg-rgb)/0.15)] bg-[rgb(var(--fg-rgb)/0.08)] px-1.5 py-0.5 text-[9.5px] text-[var(--text-soft)]">L</kbd>
-          循环
-        </span>
+          {t("循环")}</span>
       </div>
 
       <div className="learn-empty-formats flex items-center gap-1.5 text-[10.5px] text-[var(--text-faint)]">
@@ -2477,13 +2415,13 @@ function EmptyVideo({
           <path d="M12 8v5M12 16h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.4" />
         </svg>
-        mp4 / mkv / webm 都可以，越大加载越慢
-      </div>
+        {t("mp4 / mkv / webm 都可以，越大加载越慢")}</div>
     </div>
   );
 }
 
 function EmptyCues() {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
       <div className="grid h-11 w-11 place-items-center rounded-full border border-[rgb(var(--fg-rgb)/0.10)] bg-[rgb(var(--fg-rgb)/0.03)]">
@@ -2492,22 +2430,21 @@ function EmptyCues() {
           <path d="M7 10h10M7 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
       </div>
-      <p className="text-[13px] text-[var(--text-dim)]">还没有字幕</p>
+      <p className="text-[13px] text-[var(--text-dim)]">{t("还没有字幕")}</p>
       <p className="max-w-[250px] text-[11.5px] leading-relaxed text-[var(--text-faint)]">
-        如果视频自带字幕，点上方「抽字幕」直接抽出来；
-        没有的话传一个 .srt / .vtt / .ass 文件
-      </p>
+        {t("如果视频自带字幕，点上方「抽字幕」直接抽出来； 没有的话传一个 .srt / .vtt / .ass 文件")}</p>
     </div>
   );
 }
 
 export default function LearningStudio({ trial = false, user }: { trial?: boolean; user?: AccountUser | null }) {
+  const { t } = useLanguage();
   return (
     <>
-      {trial && !user && <div className="trial-banner"><span><strong>免费试学</strong> · 循环一句、点词查义，先感受怎么学。</span><a href="/signup?returnTo=%2Flearn" className="btn btn-primary">免费注册，学自己的视频</a></div>}
-      {trial && user && <div className="trial-banner"><span>正在体验示例，不覆盖你上次的视频与进度。</span><a href="/learn" className="btn btn-primary">回到我的学习台</a></div>}
+      {trial && !user && <div className="trial-banner"><span><strong>{t("免费试学")}</strong> {t("· 循环一句、点词查义，先感受怎么学。")}</span><a href="/signup?returnTo=%2Flearn" className="btn btn-primary">{t("免费注册，学自己的视频")}</a></div>}
+      {trial && user && <div className="trial-banner"><span>{t("正在体验示例，不覆盖你上次的视频与进度。")}</span><a href="/learn" className="btn btn-primary">{t("回到我的学习台")}</a></div>}
       <LearningActivity enabled={!!user} />
-      <Suspense fallback={<div className="p-10 text-sm text-[var(--text-faint)]">加载学习台…</div>}>
+      <Suspense fallback={<div className="p-10 text-sm text-[var(--text-faint)]">{t("加载学习台…")}</div>}>
         <LearnInner trial={trial} user={user} />
       </Suspense>
     </>

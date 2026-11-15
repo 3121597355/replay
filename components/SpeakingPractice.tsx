@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { useEffect, useRef, useState } from 'react';
 import type { Cue } from '@/lib/types';
@@ -19,6 +20,7 @@ function microphoneError(error: unknown) {
 export default function SpeakingPractice({ cue, cueNumber, onListen, onPause }: {
   cue?: Cue; cueNumber: number; onListen: (cue: Cue) => void; onPause: () => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false), [phase, setPhase] = useState<Phase>('idle');
   const [seconds, setSeconds] = useState(0), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [recording, setRecording] = useState<Recording>();
@@ -88,18 +90,18 @@ export default function SpeakingPractice({ cue, cueNumber, onListen, onPause }: 
   return <section className="speaking-practice" data-speaking-practice data-recording={phase === 'recording'} data-capturing={busy}>
     <button type="button" className="speaking-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3" stroke="currentColor" strokeWidth="1.7"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
-      {phase === 'recording' ? `正在录音 ${elapsedLabel(seconds)}` : phase === 'requesting' ? '等待麦克风授权…' : phase === 'saving' ? '正在保存录音…' : '录音跟读 · 练口语'} <span>{open ? '收起' : '展开'}</span>
+      {phase === 'recording' ? t("正在录音 {0}", elapsedLabel(seconds)) : phase === 'requesting' ? t("等待麦克风授权…") : phase === 'saving' ? t("正在保存录音…") : t("录音跟读 · 练口语")} <span>{open ? t("收起") : t("展开")}</span>
     </button>
     <div className="speaking-panel" hidden={!open}>
-      <p className="speaking-sentence" lang="en">{cue ? `第 ${cueNumber} 句：${cue.text}` : '先导入字幕或打开试学片段，再选择一句练口语。'}</p>
+      <p className="speaking-sentence" lang="en">{cue ? t("第 {0} 句：{1}", cueNumber, cue.text) : t("先导入字幕或打开试学片段，再选择一句练口语。")}</p>
       <div className="speaking-actions">
-        <button type="button" disabled={!cue || busy} onClick={() => { audio.current?.pause(); if (cue) onListen(cue); }}>听原句</button>
-        {phase === 'recording' ? <button type="button" className="speaking-stop" onClick={() => stopRef.current()}>停止录音 · {elapsedLabel(seconds)}</button> : <button type="button" className="speaking-record" disabled={!cue || busy} onClick={() => void start()}>{phase === 'requesting' ? '等待麦克风授权…' : phase === 'saving' ? '正在保存…' : recording ? '重新录音' : '开始录音'}</button>}
+        <button type="button" disabled={!cue || busy} onClick={() => { audio.current?.pause(); if (cue) onListen(cue); }}>{t("听原句")}</button>
+        {phase === 'recording' ? <button type="button" className="speaking-stop" onClick={() => stopRef.current()}>{t("停止录音 · {0}", elapsedLabel(seconds))}</button> : <button type="button" className="speaking-record" disabled={!cue || busy} onClick={() => void start()}>{phase === 'requesting' ? t("等待麦克风授权…") : phase === 'saving' ? t("正在保存…") : recording ? t("重新录音") : t("开始录音")}</button>}
       </div>
-      {recording && <div className="speaking-recording"><p>我的录音 · {elapsedLabel(recording.seconds)}<span lang="en">{recording.sentence}</span></p><audio ref={audio} key={recording.url} src={recording.url} controls preload="metadata" aria-label="回放我的跟读录音" onPlay={() => { if (busy) audio.current?.pause(); onPause(); }} onError={() => setError('浏览器无法回放这次录音，可以下载后用系统播放器打开。')} />
-        <div className="speaking-links"><a href={recording.url} download={recording.name} onClick={event => { if (busy) event.preventDefault(); }}>下载录音</a><button type="button" onClick={clearRecording} disabled={busy}>删除录音</button></div></div>}
-      {error && <p className="speaking-error" role="alert">{error}</p>}{notice && <p className="speaking-note" role="status">{notice}</p>}
-      <p className="speaking-note" role={phase === 'recording' ? 'status' : undefined}>{phase === 'recording' ? '正在使用麦克风，切到后台会自动停止。' : '听原句 → 录音跟读 → 回放对比。录音不上传，离开或刷新前可下载保存。'}</p>
+      {recording && <div className="speaking-recording"><p>{t("我的录音 ·")}{elapsedLabel(recording.seconds)}<span lang="en">{recording.sentence}</span></p><audio ref={audio} key={recording.url} src={recording.url} controls preload="metadata" aria-label={t("回放我的跟读录音")} onPlay={() => { if (busy) audio.current?.pause(); onPause(); }} onError={() => setError('浏览器无法回放这次录音，可以下载后用系统播放器打开。')} />
+        <div className="speaking-links"><a href={recording.url} download={recording.name} onClick={event => { if (busy) event.preventDefault(); }}>{t("下载录音")}</a><button type="button" onClick={clearRecording} disabled={busy}>{t("删除录音")}</button></div></div>}
+      {error && <p className="speaking-error" role="alert">{t(error)}</p>}{notice && <p className="speaking-note" role="status">{t(notice)}</p>}
+      <p className="speaking-note" role={phase === 'recording' ? 'status' : undefined}>{phase === 'recording' ? t("正在使用麦克风，切到后台会自动停止。") : t("听原句 → 录音跟读 → 回放对比。录音不上传，离开或刷新前可下载保存。")}</p>
     </div>
   </section>;
 }

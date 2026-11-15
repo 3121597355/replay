@@ -1,3 +1,4 @@
+import { LocalizedAnchor, Text } from '@/components/LanguageProvider';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import Catalog from '@/components/Catalog';
@@ -26,28 +27,25 @@ export default function HomePage() {
         <HomeFilmBackdrop />
         <div className="home-hero">
           <h1 className="home-intro home-hero-title">
-            看剧练听力<br />跟读练口语
-          </h1>
+            <Text text="看剧练听力" /><br /><Text text="跟读练口语" /></h1>
           <p className="home-intro home-hero-copy [animation-delay:60ms]">
-            电影、美剧、播客、新闻，都能成为英语素材。
-            <span className="home-hero-features">导入视频或音频＋字幕 · 逐句精听 · 录音跟读 · 收藏原句回放</span>
+            <Text text="电影、美剧、播客、新闻，都能成为英语素材。" /><span className="home-hero-features"><Text text="导入视频或音频＋字幕 · 逐句精听 · 录音跟读 · 收藏原句回放" /></span>
           </p>
           <div className="home-intro home-hero-actions [animation-delay:120ms]">
             <Link href="/learn?trial=1" className="btn btn-primary">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="m5 3 7 5-7 5V3Z" fill="currentColor" />
               </svg>
-              立即体验
-            </Link>
-            <Link href="/learn" className="btn btn-secondary">导入自己的素材</Link>
+              <Text text="立即体验" /></Link>
+            <Link href="/learn" className="btn btn-secondary"><Text text="导入自己的素材" /></Link>
           </div>
         </div>
-        <a href="#features" className="home-hero-scroll" aria-label="向下查看功能介绍">
-          <span>向下探索</span>
+        <LocalizedAnchor href="#features" className="home-hero-scroll" label="向下查看功能介绍">
+          <span><Text text="向下探索" /></span>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="m5 7 5 5 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </a>
+        </LocalizedAnchor>
       </section>
 
       <section id="features" className="home-benefits border-y border-[var(--line)] bg-[var(--surface)]">
@@ -73,8 +71,8 @@ export default function HomePage() {
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[var(--accent)] transition-transform duration-300 ease-out group-hover:-translate-y-0.5" aria-hidden="true">
                 <path d={item.icon} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <h2 className="mt-3 text-[15px] font-semibold text-[var(--text)]">{item.title}</h2>
-              <p className="mt-1.5 text-pretty text-[14px] leading-[1.65] text-[var(--text-dim)]">{item.text}</p>
+              <h2 className="mt-3 text-[15px] font-semibold text-[var(--text)]"><Text text={item.title} /></h2>
+              <p className="mt-1.5 text-pretty text-[14px] leading-[1.65] text-[var(--text-dim)]"><Text text={item.text} /></p>
             </div>
           ))}
         </div>
@@ -83,12 +81,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6 sm:py-20" aria-labelledby="featured-title">
         <div className="flex items-end justify-between gap-6">
           <div data-reveal>
-            <h2 id="featured-title" className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]">推荐作品</h2>
-            <p className="mt-2 text-[14px] text-[var(--text-dim)]">从日常对话到史诗剧集，按自己的水平选择。</p>
+            <h2 id="featured-title" className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]"><Text text="推荐作品" /></h2>
+            <p className="mt-2 text-[14px] text-[var(--text-dim)]"><Text text="从日常对话到史诗剧集，按自己的水平选择。" /></p>
           </div>
           <a href="#catalog" data-reveal data-reveal-delay="60" className="group inline-flex shrink-0 items-center gap-1 text-[14px] font-medium text-[var(--link)] hover:underline">
-            查看全部 {works.length} 部
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
+            <Text text="查看全部" />{works.length} <Text text="部" /><svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </a>
@@ -109,10 +106,10 @@ export default function HomePage() {
                 </div>
               </div>
               <h3 className="mt-3 text-[16px] font-semibold text-[var(--text)] transition-colors group-hover:text-[var(--link)] group-hover:underline">
-                {work.title}
+                <Text text={work.title} />
               </h3>
               <p className="mt-0.5 truncate text-[13px] text-[var(--text-faint)]">{work.originalTitle} · {work.year}</p>
-              <p className="mt-2 text-[12px] text-[var(--text-faint)]">{difficultyLabel[work.difficulty]} · {work.level}</p>
+              <p className="mt-2 text-[12px] text-[var(--text-faint)]"><Text text={difficultyLabel[work.difficulty]} /> · {work.level}</p>
             </Link>
           ))}
         </div>
@@ -121,10 +118,9 @@ export default function HomePage() {
       <section id="catalog" className="border-t border-[var(--line)]">
         <div className="mx-auto max-w-[1120px] px-4 py-16 sm:px-6 sm:py-20">
           <div className="mb-8 max-w-[720px]" data-reveal>
-            <h2 className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]">浏览片单</h2>
+            <h2 className="text-[28px] font-bold tracking-[-0.035em] text-[var(--text)] sm:text-[32px]"><Text text="浏览片单" /></h2>
             <p className="mt-2 text-[14px] leading-[1.7] text-[var(--text-dim)]">
-              按难度、类型或关键词筛选。片源与字幕请使用你合法拥有的副本。
-            </p>
+              <Text text="按难度、类型或关键词筛选。片源与字幕请使用你合法拥有的副本。" /></p>
           </div>
           <Catalog />
         </div>
@@ -135,8 +131,7 @@ export default function HomePage() {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0" aria-hidden="true">
             <path d="M8 1.8 13.5 4v4c0 3.3-2.2 5.6-5.5 6.8C4.7 13.6 2.5 11.3 2.5 8V4L8 1.8Zm-2.3 6.5 1.7 1.7 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          视频、音频和字幕只在浏览器中读取，不会上传到服务器。
-        </div>
+          <Text text="视频、音频和字幕只在浏览器中读取，不会上传到服务器。" /></div>
       </div>
     </HomeMotion>
   );

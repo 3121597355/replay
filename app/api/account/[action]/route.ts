@@ -62,7 +62,7 @@ async function handle(request: NextRequest, { params }: { params: Promise<{ acti
       if (!validEmail(email) || !['signup', 'recover', 'bind'].includes(body.purpose)) return reply({ error: '请填写有效的邮箱地址' }, 400);
       if (body.purpose === 'signup' && body.accepted !== true) return reply({ error: '请先同意使用条款和隐私说明' }, 400);
       if (body.purpose === 'bind') await accountService('/session', 'GET', undefined, token);
-      return reply(await sendAccountCode(email, body.purpose, token, clientKey));
+      return reply(await sendAccountCode(email, body.purpose, token, clientKey, body.language === 'en' ? 'en' : 'zh'));
     }
     if (!validPassword(body.password)) return reply({ error: '密码需为 8—128 个字符' }, 400);
     const username = normalizeUsername(body.username);

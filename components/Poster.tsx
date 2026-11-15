@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { useState } from 'react';
 import type { Work } from '@/lib/types';
@@ -14,6 +15,7 @@ export default function Poster({
   showTitle?: boolean;
   priority?: boolean;
 }) {
+  const { t, language } = useLanguage();
   const [failed, setFailed] = useState(false);
   const [c1, c2] = work.accent;
   const raw = work.poster ?? `/posters/${work.slug}.webp`;
@@ -28,13 +30,13 @@ export default function Poster({
         <span className={`brand-serif font-semibold text-[#536158]/20 ${size === 'sm' ? 'text-[42px]' : 'text-[68px]'}`}>
           {work.mark}
         </span>
-        <span className="text-[11px] font-medium text-[#536158]/55">{work.title}</span>
+        <span className="text-[11px] font-medium text-[#536158]/55">{language === 'en' ? work.originalTitle : work.title}</span>
       </div>
 
       {!failed && (
         <img
           src={src}
-          alt={`${work.title}（${work.originalTitle}）海报`}
+          alt={t("{0}（{1}）海报", work.title, work.originalTitle)}
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
@@ -47,7 +49,7 @@ export default function Poster({
         <div className="pointer-events-none absolute inset-0 z-20">
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-4">
-            <div className="text-[22px] font-semibold leading-tight text-white">{work.title}</div>
+            <div className="text-[22px] font-semibold leading-tight text-white">{language === 'en' ? work.originalTitle : work.title}</div>
             <div className="mt-1 truncate text-[10px] uppercase tracking-[0.14em] text-white/65">
               {work.originalTitle}
             </div>

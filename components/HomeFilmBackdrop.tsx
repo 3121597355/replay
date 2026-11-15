@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { useHomeMotionEnabled } from '@/components/HomeMotion';
 import films from '@/lib/home-films.json';
 import FilmMotionCanvas from '@/components/FilmMotionCanvas';
+import { useLanguage } from '@/components/LanguageProvider';
 
 type Cycle = { index: number; phase: 'hold' | 'outgoing' | 'incoming'; ready: string[] };
 
 export default function HomeFilmBackdrop() {
+  const { language } = useLanguage();
   const backdrop = useRef<HTMLDivElement>(null);
   const enabled = useHomeMotionEnabled();
   const [inView, setInView] = useState(false);
@@ -105,7 +107,7 @@ export default function HomeFilmBackdrop() {
       <div className="home-film-shade" />
       <div className="home-film-caption">
         <span className="home-film-caption-line" />
-        <span>{film.title} · {film.originalTitle}</span>
+        <span>{language === 'en' ? film.originalTitle : `${film.title} · ${film.originalTitle}`}</span>
       </div>
     </div>
   );

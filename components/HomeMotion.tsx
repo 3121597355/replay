@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { watchMediaQuery } from '@/lib/browser';
@@ -11,6 +12,7 @@ export function useHomeMotionEnabled() {
 }
 
 export default function HomeMotion({ children, controls = true, page = 'home' }: { children: ReactNode; controls?: boolean; page?: 'home' | 'auth' }) {
+  const { t } = useLanguage();
   const root = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<'system' | 'soft' | 'reduce'>('system');
   const [systemReduced, setSystemReduced] = useState(false);
@@ -45,14 +47,14 @@ export default function HomeMotion({ children, controls = true, page = 'home' }:
               type="button"
               onClick={toggle}
               aria-pressed={enabled}
-              aria-label={enabled ? '减少页面动效' : '开启页面动效'}
-              title={enabled ? '点击减少动画' : '点击开启滚动入场动画'}
+              aria-label={enabled ? t("减少页面动效") : t("开启页面动效")}
+              title={enabled ? t("点击减少动画") : t("点击开启滚动入场动画")}
               className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--page)] px-3 text-[12px] font-medium text-[var(--text-dim)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M2 11 6 7l3 3 5-7M10 3h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              动效{enabled ? '已开启' : '已减少'}
+              {t("动效")}{enabled ? t("已开启") : t("已减少")}
             </button>
           </div>
         )}

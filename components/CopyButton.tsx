@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLanguage } from '@/components/LanguageProvider';
 
 export default function CopyButton({
   text,
@@ -11,6 +12,7 @@ export default function CopyButton({
   label?: string;
   className?: string;
 }) {
+  const { t } = useLanguage();
   const [done, setDone] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -56,7 +58,7 @@ export default function CopyButton({
           <path d="M15 5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15" stroke="currentColor" strokeWidth="1.7" />
         </svg>
       )}
-      {done ? '已复制' : label}
+      {done ? t('已复制') : t(label)}
     </button>
   );
 }

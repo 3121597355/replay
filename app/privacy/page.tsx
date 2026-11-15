@@ -1,5 +1,7 @@
+import { LanguageContent } from '@/components/LanguageProvider';
+import EnglishLegalPage from '@/components/EnglishLegalPage';
 export const metadata = { title: '隐私说明', alternates: { canonical: '/privacy' } };
-export default function PrivacyPage() { return <article className="account-review"><h1>剧说英语隐私说明</h1><p>更新于 2026 年 11 月 13 日。</p>{[
+export default function PrivacyPage() { return <LanguageContent english={<EnglishLegalPage kind="privacy" />}><article className="account-review"><h1>剧说英语隐私说明</h1><p>更新于 2026 年 11 月 13 日。</p>{[
   ['本地视频、音频与学习内容', '视频、音频、字幕、收藏、译文缓存和具体播放位置保存在当前浏览器，不会因注册账号而上传。各账号使用独立的本地学习空间；旧记录可由你主动关联。换设备或清理浏览器数据后，需要重新选择素材，重要收藏建议先导出。'],
   ['收藏原句回放', '收藏会保存对应素材的来源信息及字幕起止时间，并在本机缓存原视频或音频供复习回放。同一次导入的收藏共用回放缓存，缓存与最近学习素材分开保存；移除最后一条相关收藏时释放它的回放缓存。缓存不足或已清理时，可重新选择同一个原文件，不上传素材、字幕或句子；原句回放的前台时间可计入学习时长。'],
   ['跟读录音', '只有你点击开始录音并授权后才使用麦克风。录音音频只在当前页面的内存中处理和回放，不上传，也不发送到统计接口；切到后台自动停止录音，离开页面或刷新后清除，可在离开前下载保存。录音和回放的前台时长计入个人学习时间，服务端不保存声音或录音内容。'],
@@ -8,4 +10,4 @@ export default function PrivacyPage() { return <article className="account-revie
   ['访问统计', '网站使用匿名访问统计了解页面、来源、设备和学习操作，并尊重浏览器的不跟踪与全局隐私控制设置。匿名统计与账号学习档案是不同用途；账号学习时间用于你登录后的个人进度和产品留存汇总。注册用户名、邮箱、验证码与具体学习内容不会发送给匿名访问统计接口。'],
   ['你自己配置的翻译服务', '翻译密钥保存在本机对应账号的设置中。主动调用翻译时，字幕文本会发送到你自己配置的接口，由该服务处理。网站不托管你的翻译密钥，也没有默认开启收费的 AI 功能。'],
   ['管理自己的数据', '可在学习台清理本机当前视频记录，或导出收藏；这不会删除电脑上的原文件。在“个人中心”中可注销云端账号，删除对应账号资料、会话、绑定邮箱、验证码记录及学习时长记录；注销不会删除你电脑中的原文件和本机缓存。再次注册同名账号会获得新的独立账号空间。'],
-].map(([title, text]) => <section key={title} className="mt-8"><h2 className="text-xl font-semibold">{title}</h2><p className="mt-3 leading-8 text-[var(--text-dim)]">{text}</p></section>)}</article>; }
+].map(([title, text]) => <section key={title} className="mt-8"><h2 className="text-xl font-semibold">{title}</h2><p className="mt-3 leading-8 text-[var(--text-dim)]">{text}</p></section>)}</article></LanguageContent>; }

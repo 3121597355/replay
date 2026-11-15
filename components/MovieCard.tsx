@@ -1,3 +1,5 @@
+'use client';
+import { useLanguage } from '@/components/LanguageProvider';
 import Link from 'next/link';
 import type { Work } from '@/lib/types';
 import { difficultyLabel, typeLabel } from '@/lib/types';
@@ -10,6 +12,7 @@ const diffDot: Record<Work['difficulty'], string> = {
 };
 
 export default function MovieCard({ work }: { work: Work }) {
+  const { t, language } = useLanguage();
   return (
     <Link
       href={`/movie/${work.slug}`}
@@ -23,7 +26,7 @@ export default function MovieCard({ work }: { work: Work }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="truncate text-[16px] font-semibold leading-6 text-[var(--text)] group-hover:text-[var(--link)] group-hover:underline">
-          {work.title}
+          {language === 'en' ? work.originalTitle : work.title}
         </h3>
         <p className="mt-0.5 truncate text-[13px] text-[var(--text-faint)]">
           {work.originalTitle} · {work.year}
@@ -32,21 +35,20 @@ export default function MovieCard({ work }: { work: Work }) {
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--text-dim)]">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: diffDot[work.difficulty] }} aria-hidden="true" />
-            {difficultyLabel[work.difficulty]}
+            {t(difficultyLabel[work.difficulty])}
           </span>
           <span aria-hidden="true">·</span>
           <span>{work.level}</span>
           <span aria-hidden="true">·</span>
-          <span>{typeLabel[work.type]}</span>
+          <span>{t(typeLabel[work.type])}</span>
         </div>
 
         <p className="mt-2.5 line-clamp-2 text-[13px] leading-[1.6] text-[var(--text-dim)]">
-          {work.tagline}
+          {t(work.tagline)}
         </p>
 
         <span className="mt-auto inline-flex items-center gap-1 pt-3 text-[13px] font-medium text-[var(--link)]">
-          学习指南
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
+          {t("学习指南")}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
             <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>

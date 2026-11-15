@@ -745,10 +745,33 @@ body:has([data-page='learn']) footer {
   display: none;
 }
 
+.language-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px; min-width: 44px; padding: 0 8px; flex-shrink: 0;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 600;
+  touch-action: manipulation;
+}
+.language-toggle:hover { background: var(--surface-3); }
+.language-toggle:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+@media (max-width: 639px) {
+  .language-toggle { height: 44px; }
+  .site-nav [data-github-link] { display: none; }
+  .site-nav > div { padding-left: 8px; padding-right: 8px; }
+  .site-nav nav a { font-size: 12px; padding-left: 2px; padding-right: 2px; }
+  .site-nav > div > a { margin-right: 2px; }
+  .site-nav > div > a > .grid { width: 28px; height: 28px; }
+  .site-nav button[aria-pressed] > span:not(.sr-only) { display: none; }
+}
+@media (max-width: 359px) {
+  .site-nav > div > div { padding-left: 0; gap: 2px; }
+}
+html[data-language='en'] .home-hero-title { font-size: clamp(32px, 4.6vw, 64px); }
+html[data-language='en'] .home-hero-copy { max-width: 760px; }
 .learn-toolbar-more { display: none; }
 /* Keep the common actions in one row on tablets, including desktop-mode
    browsers. Additional tools expand in normal flow instead of covering video. */
-@media (min-width: 768px) and (max-width: 1279px), (min-width: 768px) and (any-pointer: coarse) {
+@media (max-width: 1279px), (any-pointer: coarse) {
   .learn-toolbar .learn-toolbar-actions { flex: 0 1 auto; }
   .learn-toolbar .learn-toolbar-title { flex: 1 1 160px; }
   .learn-toolbar-actions .learn-secondary-action { display: none; }
